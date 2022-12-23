@@ -224,6 +224,7 @@ function handleDialogFlowAction(sender, action, messages, contexts, parameters) 
         let jobVacancy = getContextParameter(contexts[0], "job_vacancy")
   
         // If all params are complete send email
+        console.log('Send email', (phoneNumber !== '' && username !== '' && previousJob !== '' && yearsOfExperience !== '' && jobVacancy !== ''))
         if (phoneNumber !== '' && username !== '' && previousJob !== '' && yearsOfExperience !== '' && jobVacancy !== '') {
           const emailContent = `A new job inquiry from ${username} for the position: ${jobVacancy}.
           <br /> Previous position: ${previousJob}
@@ -897,6 +898,7 @@ async function sendEmail(subject, content) {
   try {
     console.log(`Sending email... ${content}`)
     await sgMail.send(msg);
+    console.log('Email sent')
   } catch (error) {
     console.error(error);
     if (error.response) {
