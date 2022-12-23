@@ -246,7 +246,8 @@ function handleDialogFlowAction(sender, action, messages, contexts, parameters) 
 }
 
 function getContextParameter(context, paramName) {
-  console.log(context.parameters[paramName])
+  console.log(context.parameters)
+  console.log(context.parameters.fields[paramName])
   return (isDefined(context.parameters[paramName]) && context.parameters.fields[paramName] !== '')
     ? context.parameters.fields[paramName].stringValue : ''
 }
