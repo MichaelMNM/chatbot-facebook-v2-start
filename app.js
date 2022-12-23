@@ -895,6 +895,7 @@ async function sendEmail(subject, content) {
   };
   
   try {
+    console.log(`Sending email... ${content}`)
     await sgMail.send(msg);
   } catch (error) {
     console.error(error);
