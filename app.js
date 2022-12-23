@@ -224,12 +224,13 @@ function handleDialogFlowAction(sender, action, messages, contexts, parameters) 
         let jobVacancy = getContextParameter(contexts[0], "job_vacancy")
   
         // If all params are complete send email
-        if (phoneNumber !== '' && username !== "" && previousJob !== '' && yearsOfExperience !== '' && jobVacancy !== '') {
+        if (phoneNumber !== '' && username !== '' && previousJob !== '' && yearsOfExperience !== '' && jobVacancy !== '') {
           const emailContent = `A new job inquiry from ${username} for the position: ${jobVacancy}.
           <br /> Previous position: ${previousJob}
           <br /> Years of experience: ${yearsOfExperience}
           <br /> Phone Number: ${phoneNumber}
           `
+          console.log(emailContent)
           sendEmail('New job Application', emailContent)
         }
       }
