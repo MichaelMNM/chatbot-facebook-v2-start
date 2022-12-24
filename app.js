@@ -9,6 +9,7 @@ const request = require('request');
 const app = express();
 const {v4: uuidv4} = require('uuid');
 const sgMail = require('@sendgrid/mail');
+const {DF_LANGUAGE_CODE} = require('./config')
 
 // Messenger API parameters
 if (!config.FB_PAGE_TOKEN) {
@@ -398,10 +399,13 @@ async function sendToDialogFlow(sender, textString, params) {
   sendTypingOn(sender);
   
   try {
+    console.log(config.GOOGLE_PROJECT_ID, sessionIds.get(sender), config.DF_LANGUAGE_CODE)
     const sessionPath = sessionClient.sessionPath(
       config.GOOGLE_PROJECT_ID,
       sessionIds.get(sender)
     );
+    console.log(sessionPath)
+    
     
     const request = {
       session: sessionPath,
@@ -778,8 +782,9 @@ function receivedPostback(event) {
       break;
     
     case 'JOB_INQUIRY':
-      sendToDialogFlow(senderID, 'job openings')
+      sendToDialogFlow(senderID, 'job openings', "")
       break;
+      
     case 'CHAT':
       sendTextMessage(senderID, 'Fantastic.  What else would you like to chat about?');
       break;
