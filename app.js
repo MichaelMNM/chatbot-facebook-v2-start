@@ -204,6 +204,35 @@ function handleEcho(messageId, appId, metadata) {
 
 function handleDialogFlowAction(sender, action, messages, contexts, parameters) {
   switch (action) {
+    case 'get_product_delivery_status':
+      
+      handleMessageAttachments(messages, sender)
+      
+      sendTypingOn(sender);
+      
+      setTimeout(() => {
+        const buttons = [
+          {
+            type: 'web_url',
+            url: 'https://www.myapple.com/track_order',
+            title: 'Track my Order'
+          },
+          {
+            type: 'phone_number',
+            payload: '+15555555555',
+            title: 'Call Us'
+          },
+          {
+            type: 'postback',
+            payload: 'CHAT',
+            title: 'Keep on Chatting'
+          }
+        ]
+        
+        sendButtonMessage(sender, 'What would you like to do next?', buttons)
+      }, 3000)
+      
+      break;
     
     // Check for appropriate action
     case 'get_application_details':
@@ -224,15 +253,12 @@ function handleDialogFlowAction(sender, action, messages, contexts, parameters) 
         let jobVacancy = getContextParameter(contexts[0], "job_vacancy")
   
         // If all params are complete send email
-        console.log('Send email', (phoneNumber !== '' && username !== '' && previousJob !== '' && yearsOfExperience !== '' && jobVacancy !== ''))
-        console.log(phoneNumber, username, previousJob, yearsOfExperience, jobVacancy)
         if (phoneNumber !== '' && username !== '' && previousJob !== '' && yearsOfExperience !== '' && jobVacancy !== '') {
           const emailContent = `A new job inquiry from ${username} for the position: ${jobVacancy}.
           <br /> Previous position: ${previousJob}
           <br /> Years of experience: ${yearsOfExperience}
           <br /> Phone Number: ${phoneNumber}
           `
-          console.log(emailContent)
           sendEmail('New job Application', emailContent)
         }
       }
@@ -247,8 +273,6 @@ function handleDialogFlowAction(sender, action, messages, contexts, parameters) 
 }
 
 function getContextParameter(context, paramName) {
-  console.log(context.parameters)
-  console.log(context.parameters.fields[paramName])
   return (isDefined(context.parameters.fields[paramName]) && context.parameters.fields[paramName] !== '')
     ? context.parameters.fields[paramName].stringValue : ''
 }
@@ -754,6 +778,10 @@ function receivedPostback(event) {
   var payload = event.postback.payload;
 
   switch (payload) {
+    case 'CHAT':
+      sendTextMessage(senderID, 'Fantastic.  What else would you like to chat about?');
+      break;
+    
     default:
       //unindentified payload
       sendTextMessage(senderID, 'I\'m not sure what you want. Can you be more specific?');
@@ -897,9 +925,7 @@ async function sendEmail(subject, content) {
   };
   
   try {
-    console.log(`Sending email... ${content}`)
     await sgMail.send(msg);
-    console.log('Email sent')
   } catch (error) {
     console.error(error);
     if (error.response) {
