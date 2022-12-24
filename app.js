@@ -768,6 +768,7 @@ function callSendAPI(messageData) {
  *
  */
 function receivedPostback(event) {
+  console.log(event)
   var senderID = event.sender.id;
   var recipientID = event.recipient.id;
   var timeOfPostback = event.timestamp;
