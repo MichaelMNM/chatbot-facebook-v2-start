@@ -206,7 +206,7 @@ function handleDialogFlowAction(sender, action, messages, contexts, parameters) 
   switch (action) {
     case 'get_product_delivery_status':
       
-      handleMessage(messages, sender)
+      handleMessages(messages, sender)
       
       sendTypingOn(sender);
       
