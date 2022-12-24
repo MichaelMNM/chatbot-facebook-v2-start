@@ -100,14 +100,14 @@ app.get('/webhook/', function (req, res) {
 /*
  * All callbacks for Messenger are POST-ed. They will be sent to the same
  * webhook. Be sure to subscribe your app to your page to receive callbacks
- * for your page. 
+ * for your page.
  * https://developers.facebook.com/docs/messenger-platform/product-overview/setup#subscribe_app
  *
  */
 app.post('/webhook/', function (req, res) {
   var data = req.body;
   console.log(JSON.stringify(data));
-
+  
   // Make sure this is a page subscription
   if (data.object == 'page') {
     // Iterate over each entry
@@ -115,7 +115,7 @@ app.post('/webhook/', function (req, res) {
     data.entry.forEach(function (pageEntry) {
       var pageID = pageEntry.id;
       var timeOfEvent = pageEntry.time;
-
+      
       // Iterate over each messaging event
       pageEntry.messaging.forEach(function (messagingEvent) {
         if (messagingEvent.optin) {
@@ -135,37 +135,36 @@ app.post('/webhook/', function (req, res) {
         }
       });
     });
-
+    
     // Assume all went well.
     // You must send back a 200, within 20 seconds
     res.sendStatus(200);
   }
 });
 
-
 function receivedMessage(event) {
-
+  
   var senderID = event.sender.id;
   var recipientID = event.recipient.id;
   var timeOfMessage = event.timestamp;
   var message = event.message;
-
+  
   if (!sessionIds.has(senderID)) {
     sessionIds.set(senderID, uuidv4());
   }
   //console.log("Received message for user %d and page %d at %d with message:", senderID, recipientID, timeOfMessage);
   //console.log(JSON.stringify(message));
-
+  
   var isEcho = message.is_echo;
   var messageId = message.mid;
   var appId = message.app_id;
   var metadata = message.metadata;
-
+  
   // You may get a text or attachment but not both
   var messageText = message.text;
   var messageAttachments = message.attachments;
   var quickReply = message.quick_reply;
-
+  
   if (isEcho) {
     handleEcho(messageId, appId, metadata);
     return;
@@ -173,8 +172,8 @@ function receivedMessage(event) {
     handleQuickReply(senderID, quickReply, messageId);
     return;
   }
-
-
+  
+  
   if (messageText) {
     //send message to api.ai
     sendToDialogFlow(senderID, messageText);
@@ -182,7 +181,6 @@ function receivedMessage(event) {
     handleMessageAttachments(messageAttachments, senderID);
   }
 }
-
 
 function handleMessageAttachments(messageAttachments, senderID) {
   //for now just reply
@@ -246,12 +244,12 @@ function handleDialogFlowAction(sender, action, messages, contexts, parameters) 
       if (filteredContexts.length > 0 && contexts[0].parameters) {
         
         // gather params
-        let phoneNumber = getContextParameter(contexts[0], "phone_number")
-        let username = getContextParameter(contexts[0], "username")
-        let previousJob = getContextParameter(contexts[0], "previous_job")
-        let yearsOfExperience = getContextParameter(contexts[0], "years_of_experience")
-        let jobVacancy = getContextParameter(contexts[0], "job_vacancy")
-  
+        let phoneNumber = getContextParameter(contexts[0], 'phone_number')
+        let username = getContextParameter(contexts[0], 'username')
+        let previousJob = getContextParameter(contexts[0], 'previous_job')
+        let yearsOfExperience = getContextParameter(contexts[0], 'years_of_experience')
+        let jobVacancy = getContextParameter(contexts[0], 'job_vacancy')
+        
         // If all params are complete send email
         if (phoneNumber !== '' && username !== '' && previousJob !== '' && yearsOfExperience !== '' && jobVacancy !== '') {
           const emailContent = `A new job inquiry from ${username} for the position: ${jobVacancy}.
@@ -305,9 +303,8 @@ function handleMessage(message, sender) {
   }
 }
 
-
 function handleCardMessages(messages, sender) {
-
+  
   let elements = [];
   for (var m = 0; m < messages.length; m++) {
     let message = messages[m];
@@ -330,8 +327,8 @@ function handleCardMessages(messages, sender) {
       }
       buttons.push(button);
     }
-
-
+    
+    
     let element = {
       'title': message.card.title,
       'image_url': message.card.imageUri,
@@ -343,14 +340,13 @@ function handleCardMessages(messages, sender) {
   sendGenericMessage(sender, elements);
 }
 
-
 function handleMessages(messages, sender) {
   let timeoutInterval = 1100;
   let previousType;
   let cardTypes = [];
   let timeout = 0;
   for (var i = 0; i < messages.length; i++) {
-
+    
     if (previousType == 'card' && (messages[i].message != 'card' || i == messages.length - 1)) {
       timeout = (i - 1) * timeoutInterval;
       setTimeout(handleCardMessages.bind(null, cardTypes, sender), timeout);
@@ -365,26 +361,26 @@ function handleMessages(messages, sender) {
     } else if (messages[i].message == 'card') {
       cardTypes.push(messages[i]);
     } else {
-
+      
       timeout = i * timeoutInterval;
       setTimeout(handleMessage.bind(null, messages[i], sender), timeout);
     }
-
+    
     previousType = messages[i].message;
-
+    
   }
 }
 
 function handleDialogFlowResponse(sender, response) {
   let responseText = response.fulfillmentMessages.fulfillmentText;
-
+  
   let messages = response.fulfillmentMessages;
   let action = response.action;
   let contexts = response.outputContexts;
   let parameters = response.parameters;
-
+  
   sendTypingOff(sender);
-
+  
   if (isDefined(action)) {
     handleDialogFlowAction(sender, action, messages, contexts, parameters);
   } else if (isDefined(messages)) {
@@ -398,15 +394,15 @@ function handleDialogFlowResponse(sender, response) {
 }
 
 async function sendToDialogFlow(sender, textString, params) {
-
+  
   sendTypingOn(sender);
-
+  
   try {
     const sessionPath = sessionClient.sessionPath(
       config.GOOGLE_PROJECT_ID,
       sessionIds.get(sender)
     );
-
+    
     const request = {
       session: sessionPath,
       queryInput: {
@@ -422,16 +418,15 @@ async function sendToDialogFlow(sender, textString, params) {
       }
     };
     const responses = await sessionClient.detectIntent(request);
-
+    
     const result = responses[0].queryResult;
     handleDialogFlowResponse(sender, result);
   } catch (e) {
     console.log('error');
     console.log(e);
   }
-
+  
 }
-
 
 function sendTextMessage(recipientId, text) {
   var messageData = {
@@ -463,7 +458,7 @@ function sendImageMessage(recipientId, imageUrl) {
       }
     }
   };
-
+  
   callSendAPI(messageData);
 }
 
@@ -485,7 +480,7 @@ function sendGifMessage(recipientId) {
       }
     }
   };
-
+  
   callSendAPI(messageData);
 }
 
@@ -507,7 +502,7 @@ function sendAudioMessage(recipientId) {
       }
     }
   };
-
+  
   callSendAPI(messageData);
 }
 
@@ -529,7 +524,7 @@ function sendVideoMessage(recipientId, videoName) {
       }
     }
   };
-
+  
   callSendAPI(messageData);
 }
 
@@ -551,7 +546,7 @@ function sendFileMessage(recipientId, fileName) {
       }
     }
   };
-
+  
   callSendAPI(messageData);
 }
 
@@ -576,7 +571,7 @@ function sendButtonMessage(recipientId, text, buttons) {
       }
     }
   };
-
+  
   callSendAPI(messageData);
 }
 
@@ -596,7 +591,7 @@ function sendGenericMessage(recipientId, elements) {
       }
     }
   };
-
+  
   callSendAPI(messageData);
 }
 
@@ -605,7 +600,7 @@ function sendReceiptMessage(recipientId, recipient_name, currency, payment_metho
                             timestamp, elements, address, summary, adjustments) {
   // Generate a random receipt ID as the API requires a unique ID
   var receiptId = 'order' + Math.floor(Math.random() * 1000);
-
+  
   var messageData = {
     recipient: {
       id: recipientId
@@ -628,7 +623,7 @@ function sendReceiptMessage(recipientId, recipient_name, currency, payment_metho
       }
     }
   };
-
+  
   callSendAPI(messageData);
 }
 
@@ -647,7 +642,7 @@ function sendQuickReply(recipientId, text, replies, metadata) {
       quick_replies: replies
     }
   };
-
+  
   callSendAPI(messageData);
 }
 
@@ -656,14 +651,14 @@ function sendQuickReply(recipientId, text, replies, metadata) {
  *
  */
 function sendReadReceipt(recipientId) {
-
+  
   var messageData = {
     recipient: {
       id: recipientId
     },
     sender_action: 'mark_seen'
   };
-
+  
   callSendAPI(messageData);
 }
 
@@ -672,15 +667,15 @@ function sendReadReceipt(recipientId) {
  *
  */
 function sendTypingOn(recipientId) {
-
-
+  
+  
   var messageData = {
     recipient: {
       id: recipientId
     },
     sender_action: 'typing_on'
   };
-
+  
   callSendAPI(messageData);
 }
 
@@ -689,15 +684,15 @@ function sendTypingOn(recipientId) {
  *
  */
 function sendTypingOff(recipientId) {
-
-
+  
+  
   var messageData = {
     recipient: {
       id: recipientId
     },
     sender_action: 'typing_off'
   };
-
+  
   callSendAPI(messageData);
 }
 
@@ -724,7 +719,7 @@ function sendAccountLinking(recipientId) {
       }
     }
   };
-
+  
   callSendAPI(messageData);
 }
 
@@ -741,12 +736,12 @@ function callSendAPI(messageData) {
     },
     method: 'POST',
     json: messageData
-
+    
   }, function (error, response, body) {
     if (!error && response.statusCode == 200) {
       var recipientId = body.recipient_id;
       var messageId = body.message_id;
-
+      
       if (messageId) {
         console.log('Successfully sent message with id %s to recipient %s',
           messageId, recipientId);
@@ -764,20 +759,27 @@ function callSendAPI(messageData) {
 /*
  * Postback Event
  *
- * This event is called when a postback is tapped on a Structured Message. 
+ * This event is called when a postback is tapped on a Structured Message.
  * https://developers.facebook.com/docs/messenger-platform/webhook-reference/postback-received
- * 
+ *
  */
 function receivedPostback(event) {
   var senderID = event.sender.id;
   var recipientID = event.recipient.id;
   var timeOfPostback = event.timestamp;
-
+  
   // The 'payload' param is a developer-defined field which is set in a postback
   // button for Structured Messages.
   var payload = event.postback.payload;
-
+  
   switch (payload) {
+    case 'GET_STARTED':
+      sendTextMessage(senderID, 'Alrighty then.  What can I help you with?');
+      break;
+    
+    case 'JOB_INQUIRY':
+      sendToDialogFlow(senderID, 'job openings')
+      break;
     case 'CHAT':
       sendTextMessage(senderID, 'Fantastic.  What else would you like to chat about?');
       break;
@@ -786,12 +788,12 @@ function receivedPostback(event) {
       //unindentified payload
       sendTextMessage(senderID, 'I\'m not sure what you want. Can you be more specific?');
       break;
-
+    
   }
-
+  
   console.log('Received postback for user %d and page %d with payload \'%s\' ' +
     'at %d', senderID, recipientID, payload, timeOfPostback);
-
+  
 }
 
 
@@ -800,16 +802,16 @@ function receivedPostback(event) {
  *
  * This event is called when a previously-sent message has been read.
  * https://developers.facebook.com/docs/messenger-platform/webhook-reference/message-read
- * 
+ *
  */
 function receivedMessageRead(event) {
   var senderID = event.sender.id;
   var recipientID = event.recipient.id;
-
+  
   // All messages before watermark (a timestamp) or sequence have been seen.
   var watermark = event.read.watermark;
   var sequenceNumber = event.read.seq;
-
+  
   console.log('Received message read event for watermark %d and sequence ' +
     'number %d', watermark, sequenceNumber);
 }
@@ -820,15 +822,15 @@ function receivedMessageRead(event) {
  * This event is called when the Link Account or UnLink Account action has been
  * tapped.
  * https://developers.facebook.com/docs/messenger-platform/webhook-reference/account-linking
- * 
+ *
  */
 function receivedAccountLink(event) {
   var senderID = event.sender.id;
   var recipientID = event.recipient.id;
-
+  
   var status = event.account_linking.status;
   var authCode = event.account_linking.authorization_code;
-
+  
   console.log('Received account link event with for user %d with status %s ' +
     'and auth code %s ', senderID, status, authCode);
 }
@@ -836,7 +838,7 @@ function receivedAccountLink(event) {
 /*
  * Delivery Confirmation Event
  *
- * This event is sent to confirm the delivery of a message. Read more about 
+ * This event is sent to confirm the delivery of a message. Read more about
  * these fields at https://developers.facebook.com/docs/messenger-platform/webhook-reference/message-delivered
  *
  */
@@ -847,22 +849,22 @@ function receivedDeliveryConfirmation(event) {
   var messageIDs = delivery.mids;
   var watermark = delivery.watermark;
   var sequenceNumber = delivery.seq;
-
+  
   if (messageIDs) {
     messageIDs.forEach(function (messageID) {
       console.log('Received delivery confirmation for message ID: %s',
         messageID);
     });
   }
-
+  
   console.log('All message before %d were delivered.', watermark);
 }
 
 /*
  * Authorization Event
  *
- * The value for 'optin.ref' is defined in the entry point. For the "Send to 
- * Messenger" plugin, it is the 'data-ref' field. Read more at 
+ * The value for 'optin.ref' is defined in the entry point. For the "Send to
+ * Messenger" plugin, it is the 'data-ref' field. Read more at
  * https://developers.facebook.com/docs/messenger-platform/webhook-reference/authentication
  *
  */
@@ -870,26 +872,26 @@ function receivedAuthentication(event) {
   var senderID = event.sender.id;
   var recipientID = event.recipient.id;
   var timeOfAuth = event.timestamp;
-
+  
   // The 'ref' field is set in the 'Send to Messenger' plugin, in the 'data-ref'
   // The developer can set this to an arbitrary value to associate the
   // authentication callback with the 'Send to Messenger' click event. This is
   // a way to do account linking when the user clicks the 'Send to Messenger'
   // plugin.
   var passThroughParam = event.optin.ref;
-
+  
   console.log('Received authentication for user %d and page %d with pass ' +
     'through param \'%s\' at %d', senderID, recipientID, passThroughParam,
     timeOfAuth);
-
+  
   // When an authentication is received, we'll send a message back to the sender
   // to let them know it was successful.
   sendTextMessage(senderID, 'Authentication successful');
 }
 
 /*
- * Verify that the callback came from Facebook. Using the App Secret from 
- * the App Dashboard, we can verify the signature that is sent with each 
+ * Verify that the callback came from Facebook. Using the App Secret from
+ * the App Dashboard, we can verify the signature that is sent with each
  * callback in the x-hub-signature field, located in the header.
  *
  * https://developers.facebook.com/docs/graph-api/webhooks#setup
@@ -897,18 +899,18 @@ function receivedAuthentication(event) {
  */
 function verifyRequestSignature(req, res, buf) {
   var signature = req.headers['x-hub-signature'];
-
+  
   if (!signature) {
     throw new Error('Couldn\'t validate the signature.');
   } else {
     var elements = signature.split('=');
     var method = elements[0];
     var signatureHash = elements[1];
-
+    
     var expectedHash = crypto.createHmac('sha1', config.FB_APP_SECRET)
       .update(buf)
       .digest('hex');
-
+    
     if (signatureHash != expectedHash) {
       throw new Error('Couldn\'t validate the request signature.');
     }
@@ -938,11 +940,11 @@ function isDefined(obj) {
   if (typeof obj == 'undefined') {
     return false;
   }
-
+  
   if (!obj) {
     return false;
   }
-
+  
   return obj != null;
 }
 
