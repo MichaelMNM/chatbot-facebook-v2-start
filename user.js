@@ -28,6 +28,7 @@ const _getUserByFacebookId = async (userId) => {
   try {
     const queryFindUserByFacebookId = `SELECT fb_id from users WHERE fb_id = '${userId}' LIMIT 1`
     const result = await client.query(queryFindUserByFacebookId)
+    console.log(result)
     return result.rows.length === 1 ? result.rows[0] : null
   } catch (error) {
     console.error(error)
@@ -39,7 +40,7 @@ const _getUserByFacebookId = async (userId) => {
 const addUser = async (userId) => {
   try {
     let userDataResult = await _getUserByFacebookId(userId)
-    if (userDataResult.rows.length === 0) {
+    if (!userDataResult) {
       console.log('user not found.  adding user')
       const fbResponse = await _getFacebookUserData(userId)
       const userData = fbResponse.data
