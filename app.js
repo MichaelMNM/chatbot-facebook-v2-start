@@ -159,6 +159,7 @@ function setSessionAndUser(senderID) {
   
   if (!usersMap.has(senderID)) {
     const user = userService.findOrCreateUser(senderID)
+    console.log(user)
     if (!user) {
       console.error('Unable to retrieve user.')
     } else {
@@ -879,6 +880,7 @@ function receivedPostback(event) {
 
 function greetUserText(userId) {
   const user = usersMap.get(userId)
+  console.log(user)
   const greetingText = ` Welcome ${user.first_name}!  I can answer frequently asked questions and perform initial job interviews.  What can I help you with?`
   sendTextMessage(userId, greetingText);
 }

@@ -46,7 +46,6 @@ const findOrCreateUser = async (userId) => {
       await _insertUserData(userId, userData)
       userDataResult = await _getUserByFacebookId(userId)
     }
-    console.log(userDataResult)
     return userDataResult
   } catch (error) {
     console.error(error)
