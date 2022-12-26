@@ -11,6 +11,9 @@ const {v4: uuidv4} = require('uuid');
 const sgMail = require('@sendgrid/mail');
 const {DF_LANGUAGE_CODE} = require('./config')
 const axios = require('axios')
+const pg = require('pg')
+
+pg.defaults.ssl = true
 
 // Messenger API parameters
 if (!config.FB_PAGE_TOKEN) {
@@ -45,6 +48,9 @@ if (!config.EMAIL_TO) { //used for ink to static files
 }
 if (!config.EMAIL_FROM) { //used for ink to static files
   throw new Error('missing EMAIL_FROM');
+}
+if (!config.PG_CONFIG) { //used for ink to static files
+  throw new Error('missing PG_CONFIG');
 }
 
 
@@ -151,9 +157,9 @@ function receivedMessage(event) {
   var timeOfMessage = event.timestamp;
   var message = event.message;
   
-   if (!sessionIds.has(senderID)) {
-     sessionIds.set(senderID, uuidv4());
-   }
+  if (!sessionIds.has(senderID)) {
+    sessionIds.set(senderID, uuidv4());
+  }
   //console.log("Received message for user %d and page %d at %d with message:", senderID, recipientID, timeOfMessage);
   //console.log(JSON.stringify(message));
   
@@ -205,7 +211,7 @@ function handleEcho(messageId, appId, metadata) {
 async function handleDialogFlowAction(sender, action, messages, contexts, parameters) {
   switch (action) {
     case 'get_current_weather':
-      if (parameters.fields.hasOwnProperty('geo-city') && parameters.fields["geo-city"].stringValue !== '') {
+      if (parameters.fields.hasOwnProperty('geo-city') && parameters.fields['geo-city'].stringValue !== '') {
         // https://api.openweathermap.org/data/2.5/weather?q={city name}&appid={API key}
         /*
         Please use Geocoder API if you need automatic convert city names and zip-codes to geo coordinates
@@ -223,7 +229,7 @@ async function handleDialogFlowAction(sender, action, messages, contexts, parame
           const weather = response.data
           console.log(weather)
           if (weather.hasOwnProperty('weather')) {
-            const reply = `${messages[0].text.text} ${weather["weather"][0]['description']}`;
+            const reply = `${messages[0].text.text} ${weather['weather'][0]['description']}`;
             sendTextMessage(sender, reply)
           }
         } catch (error) {
@@ -282,25 +288,25 @@ async function handleDialogFlowAction(sender, action, messages, contexts, parame
         let previousJob = getContextParameter(contexts[0], 'previous_job')
         let yearsOfExperience = getContextParameter(contexts[0], 'years_of_experience')
         let jobVacancy = getContextParameter(contexts[0], 'job_vacancy')
-  
-  
+        
+        
         // If we are asking about yearsOfExperience send this custom response
         if (phoneNumber === '' && username !== '' && previousJob !== '' && yearsOfExperience === '') {
           const replies = [
             {
-              "content_type": "text",
-              "title": "Less than 1 year",
-              "payload": "Less than 1 year"
+              'content_type': 'text',
+              'title': 'Less than 1 year',
+              'payload': 'Less than 1 year'
             },
             {
-              "content_type": "text",
-              "title": "Less than 10 years",
-              "payload": "Less than 10 years"
+              'content_type': 'text',
+              'title': 'Less than 10 years',
+              'payload': 'Less than 10 years'
             },
             {
-              "content_type": "text",
-              "title": "More than 10 years",
-              "payload": "More than 10 years"
+              'content_type': 'text',
+              'title': 'More than 10 years',
+              'payload': 'More than 10 years'
             }
           ]
           sendQuickReply(sender, messages[0].text.text[0], replies)
@@ -841,9 +847,9 @@ function receivedPostback(event) {
       break;
     
     case 'JOB_INQUIRY':
-      sendToDialogFlow(senderID, 'job openings', "")
+      sendToDialogFlow(senderID, 'job openings', '')
       break;
-      
+    
     case 'CHAT':
       sendTextMessage(senderID, 'Fantastic.  What else would you like to chat about?');
       break;
@@ -871,6 +877,32 @@ function greetUserText(userId) {
       var user = JSON.parse(body);
       // console.log('getUserData:', user)
       if (user.first_name) {
+        
+        const pool = new pg.Pool(config.PG_CONFIG);
+        pool.connect(function (err, client, done) {
+          if (err) {
+            return console.error('Error acquiring client', err.stack)
+          }
+          
+          const rows = [];
+          client.query(`SELECT fb_id
+                        from users
+                        WHERE fb_id = ${userId}
+                        LIMIT 1`,
+            function (err, result) {
+              if (err) {
+                console.log('Query error', err)
+              } else {
+                if (result.rows.length === 0) {
+                  const sql = `INSERT INTO users (fb_id, first_name, last_name, profile_pic) VALUES ($1, $2, $3, $4)`;
+                  client.query(sql, [userId, user.first_name, user.last_name, user.profile_pic])
+                }
+              }
+            }
+          )
+        })
+        pool. end();
+        
         const greetingText = ` Welcome ${user.first_name}!  I can answer frequently asked questions and perform initial job interviews.  What can I help you with?`
         sendTextMessage(userId, greetingText);
       } else {
