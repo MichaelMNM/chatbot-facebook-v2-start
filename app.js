@@ -150,9 +150,9 @@ function receivedMessage(event) {
   var timeOfMessage = event.timestamp;
   var message = event.message;
   
-  if (!sessionIds.has(senderID)) {
-    sessionIds.set(senderID, uuidv4());
-  }
+   if (!sessionIds.has(senderID)) {
+     sessionIds.set(senderID, uuidv4());
+   }
   //console.log("Received message for user %d and page %d at %d with message:", senderID, recipientID, timeOfMessage);
   //console.log(JSON.stringify(message));
   
@@ -768,10 +768,14 @@ function callSendAPI(messageData) {
  *
  */
 function receivedPostback(event) {
-  console.log(event)
   var senderID = event.sender.id;
   var recipientID = event.recipient.id;
   var timeOfPostback = event.timestamp;
+  
+  // Duplicated session code.  See receivedMessage function.
+  if (!sessionIds.has(senderID)) {
+    sessionIds.set(senderID, uuidv4());
+  }
   
   // The 'payload' param is a developer-defined field which is set in a postback
   // button for Structured Messages.
