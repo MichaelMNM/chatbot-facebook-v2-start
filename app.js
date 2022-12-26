@@ -817,7 +817,8 @@ function greetUserText(userId) {
       var user = JSON.parse(body);
       console.log('getUserData:', user)
       if (user.first_name) {
-        sendTextMessage(userId, user.last_name, user.profile_pic);
+        const greetingText = ` Welcome ${user.first_name}!  I can answer frequently asked questions and perform initial job interviews.  What can I help you with?`
+        sendTextMessage(userId, greetingText);
       } else {
         console.log(`Cannot get data for fb user with id ${userId}`)
       }
