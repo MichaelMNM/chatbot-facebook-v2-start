@@ -40,11 +40,13 @@ const addUser = async (userId) => {
   try {
     let userDataResult = await _getUserByFacebookId(userId)
     if (userDataResult.rows.length === 0) {
+      console.log('user not found.  adding user')
       const fbResponse = await _getFacebookUserData(userId)
       const userData = fbResponse.data
       await _insertUserData(userId, userData)
       userDataResult = await _getUserByFacebookId(userId)
     }
+    console.log(userDataResult)
     return userDataResult.rows[0]
   } catch (error) {
     console.error(error)
