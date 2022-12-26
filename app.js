@@ -10,6 +10,7 @@ const app = express();
 const {v4: uuidv4} = require('uuid');
 const sgMail = require('@sendgrid/mail');
 const {DF_LANGUAGE_CODE} = require('./config')
+const axios = require('axios')
 
 // Messenger API parameters
 if (!config.FB_PAGE_TOKEN) {
@@ -201,8 +202,39 @@ function handleEcho(messageId, appId, metadata) {
   console.log('Received echo for message %s and app %d with metadata %s', messageId, appId, metadata);
 }
 
-function handleDialogFlowAction(sender, action, messages, contexts, parameters) {
+async function handleDialogFlowAction(sender, action, messages, contexts, parameters) {
   switch (action) {
+    case 'get_current_weather':
+      if (parameters.fields.hasOwnProperty('geo-city') && parameters.fields["geo-city"].stringValue !== '') {
+        // https://api.openweathermap.org/data/2.5/weather?q={city name}&appid={API key}
+        /*
+        Please use Geocoder API if you need automatic convert city names and zip-codes to geo coordinates
+        and the other way around.
+        Please note that API requests by city name, zip-codes and city id have been deprecated.
+        Although they are still available for use, bug fixing and updates are no longer available
+        for this functionality
+        */
+        const params = {
+          appid: config.OPENWEATHER_API_KEY,
+          q: parameters.fields['geo-city'].stringValue
+        }
+        try {
+          const response = await axios.get('https://api.openweathermap.org/data/2.5/weather', {params})
+          const weather = response.data
+          console.log(weather)
+          if (weather.hasOwnProperty('weather')) {
+            const reply = `${messages[0].text.text} ${weather["weather"][0]['description']}`;
+            sendTextMessage(sender, reply)
+          }
+        } catch (error) {
+          console.log(error)
+          sendTextMessage(sender, 'Current weather is unavailable.')
+        }
+      } else {
+        // No city?  Forward bot question asking for entity
+        handleMessages(messages, sender)
+      }
+      break;
     case 'get_product_delivery_status':
       
       handleMessages(messages, sender)
@@ -236,7 +268,7 @@ function handleDialogFlowAction(sender, action, messages, contexts, parameters) 
     // Check for appropriate action
     case 'get_application_details':
       // Find any relevant context included in the action data
-      let filteredContexts = contexts.filter(el => {
+      const filteredContexts = contexts.filter(el => {
         return el.name.includes('job_application') ||
           el.name.includes('job_application_details_dialog_context')
       })

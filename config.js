@@ -9,7 +9,8 @@ const {
   GOOGLE_PRIVATE_KEY,
   SENDGRID_API_KEY,
   EMAIL_TO,
-  EMAIL_FROM
+  EMAIL_FROM,
+  OPENWEATHER_API_KEY,
 } = process.env
 
 module.exports = {
@@ -23,5 +24,6 @@ module.exports = {
   GOOGLE_PRIVATE_KEY,
   SENDGRID_API_KEY,
   EMAIL_TO,
-  EMAIL_FROM
+  EMAIL_FROM,
+  OPENWEATHER_API_KEY
 }
