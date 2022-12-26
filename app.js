@@ -152,13 +152,13 @@ app.post('/webhook/', function (req, res) {
   }
 });
 
-function setSessionAndUser(senderID) {
+async function setSessionAndUser(senderID) {
   if (!sessionIds.has(senderID)) {
     sessionIds.set(senderID, uuidv4());
   }
   
   if (!usersMap.has(senderID)) {
-    const user = userService.findOrCreateUser(senderID)
+    const user = await userService.findOrCreateUser(senderID)
     console.log(user)
     if (!user) {
       console.error('Unable to retrieve user.')
