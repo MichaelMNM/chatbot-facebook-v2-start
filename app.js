@@ -12,8 +12,9 @@ const sgMail = require('@sendgrid/mail');
 const {DF_LANGUAGE_CODE} = require('./config')
 const axios = require('axios')
 const pg = require('pg')
-
 pg.defaults.ssl = true
+
+const userService = require('./user')
 
 // Messenger API parameters
 if (!config.FB_PAGE_TOKEN) {
@@ -88,6 +89,7 @@ const sessionClient = new dialogflow.SessionsClient(
 
 
 const sessionIds = new Map();
+const usersMap = new Map()
 
 // Index route
 app.get('/', function (req, res) {
@@ -150,6 +152,21 @@ app.post('/webhook/', function (req, res) {
   }
 });
 
+function setSessionAndUser(senderID) {
+  if (!sessionIds.has(senderID)) {
+    sessionIds.set(senderID, uuidv4());
+  }
+  
+  if (!usersMap.has(senderID)) {
+    const user = userService.addUser()
+    if (!user) {
+      console.error('Unable to retrieve user.')
+    } else {
+      usersMap.set(senderID, user)
+    }
+  }
+}
+
 function receivedMessage(event) {
   
   var senderID = event.sender.id;
@@ -157,9 +174,7 @@ function receivedMessage(event) {
   var timeOfMessage = event.timestamp;
   var message = event.message;
   
-  if (!sessionIds.has(senderID)) {
-    sessionIds.set(senderID, uuidv4());
-  }
+  setSessionAndUser(senderID)
   //console.log("Received message for user %d and page %d at %d with message:", senderID, recipientID, timeOfMessage);
   //console.log(JSON.stringify(message));
   
@@ -831,11 +846,7 @@ function receivedPostback(event) {
   var senderID = event.sender.id;
   var recipientID = event.recipient.id;
   var timeOfPostback = event.timestamp;
-  
-  // Duplicated session code.  See receivedMessage function.
-  if (!sessionIds.has(senderID)) {
-    sessionIds.set(senderID, uuidv4());
-  }
+  setSessionAndUser(senderID)
   
   // The 'payload' param is a developer-defined field which is set in a postback
   // button for Structured Messages.
