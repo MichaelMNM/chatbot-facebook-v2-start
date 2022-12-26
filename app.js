@@ -253,7 +253,7 @@ function handleDialogFlowAction(sender, action, messages, contexts, parameters) 
   
   
         // If we are asking about yearsOfExperience send this custom response
-        if (phoneNumber === '' && username !== '' && previousJob !== '' && yearsOfExperience === '' && jobVacancy === '') {
+        if (phoneNumber === '' && username !== '' && previousJob !== '' && yearsOfExperience === '') {
           const replies = [
             {
               "content_type": "text",
