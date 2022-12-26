@@ -37,7 +37,7 @@ const _getUserByFacebookId = async (userId) => {
   }
 }
 
-const addUser = async (userId) => {
+const findOrCreateUser = async (userId) => {
   try {
     let userDataResult = await _getUserByFacebookId(userId)
     if (!userDataResult) {
@@ -48,12 +48,12 @@ const addUser = async (userId) => {
       userDataResult = await _getUserByFacebookId(userId)
     }
     console.log(userDataResult)
-    return userDataResult.rows[0]
+    return userDataResult
   } catch (error) {
     console.error(error)
   }
 }
 
 module.exports = {
-  addUser
+  findOrCreateUser
 }

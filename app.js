@@ -158,7 +158,7 @@ function setSessionAndUser(senderID) {
   }
   
   if (!usersMap.has(senderID)) {
-    const user = userService.addUser(senderID)
+    const user = userService.findOrCreateUser(senderID)
     if (!user) {
       console.error('Unable to retrieve user.')
     } else {
