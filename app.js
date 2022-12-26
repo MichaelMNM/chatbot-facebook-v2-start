@@ -885,10 +885,7 @@ function greetUserText(userId) {
           }
           
           const rows = [];
-          client.query(`SELECT fb_id
-                        from users
-                        WHERE fb_id = ${userId}
-                        LIMIT 1`,
+          client.query('SELECT fb_id from users WHERE fb_id = ' + userId + ' LIMIT 1',
             function (err, result) {
               if (err) {
                 console.log('Query error', err)
