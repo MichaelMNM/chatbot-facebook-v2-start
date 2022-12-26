@@ -783,7 +783,7 @@ function receivedPostback(event) {
   
   switch (payload) {
     case 'GET_STARTED':
-      sendTextMessage(senderID, 'Alrighty then.  What can I help you with?');
+      greetUserText(senderID);
       break;
     
     case 'JOB_INQUIRY':
@@ -804,6 +804,27 @@ function receivedPostback(event) {
   console.log('Received postback for user %d and page %d with payload \'%s\' ' +
     'at %d', senderID, recipientID, payload, timeOfPostback);
   
+}
+
+function greetUserText(userId) {
+  request({
+    uri: `https://graph.facebook.com/v15.0/${userId}`,
+    qs: {
+      access_token: config.FB_PAGE_TOKEN
+    }
+  }, function (error, response, body) {
+    if (!error && response.statusCode === 200) {
+      var user = JSON.parse(body);
+      console.log('getUserData:', user)
+      if (user.first_name) {
+        sendTextMessage(userId, user.last_name, user.profile_pic);
+      } else {
+        console.log(`Cannot get data for fb user with id ${userId}`)
+      }
+    } else {
+      console.error(response.error)
+    }
+  })
 }
 
 
