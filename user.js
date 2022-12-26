@@ -26,7 +26,7 @@ const _insertUserData = async (userId, userData) => {
 const _getUserByFacebookId = async (userId) => {
   const client = await db.connect()
   try {
-    const queryFindUserByFacebookId = `SELECT fb_id from users WHERE fb_id = '${userId}' LIMIT 1`
+    const queryFindUserByFacebookId = `SELECT * from users WHERE fb_id = '${userId}' LIMIT 1`
     const result = await client.query(queryFindUserByFacebookId)
     return result.rows.length === 1 ? result.rows[0] : null
   } catch (error) {
