@@ -28,7 +28,6 @@ const _getUserByFacebookId = async (userId) => {
   try {
     const queryFindUserByFacebookId = `SELECT fb_id from users WHERE fb_id = '${userId}' LIMIT 1`
     const result = await client.query(queryFindUserByFacebookId)
-    console.log(result)
     return result.rows.length === 1 ? result.rows[0] : null
   } catch (error) {
     console.error(error)
