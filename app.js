@@ -250,9 +250,31 @@ function handleDialogFlowAction(sender, action, messages, contexts, parameters) 
         let previousJob = getContextParameter(contexts[0], 'previous_job')
         let yearsOfExperience = getContextParameter(contexts[0], 'years_of_experience')
         let jobVacancy = getContextParameter(contexts[0], 'job_vacancy')
-        
+  
+  
+        // If we are asking about yearsOfExperience send this custom response
+        if (phoneNumber === '' && username !== '' && previousJob !== '' && yearsOfExperience === '' && jobVacancy === '') {
+          const replies = [
+            {
+              "content_type": "text",
+              "title": "Less than 1 year",
+              "payload": "Less than 1 year"
+            },
+            {
+              "content_type": "text",
+              "title": "Less than 10 years",
+              "payload": "Less than 10 years"
+            },
+            {
+              "content_type": "text",
+              "title": "More than 10 years",
+              "payload": "More than 10 years"
+            }
+          ]
+          sendQuickReply(sender, messages[0].text.text[0], replies)
+        }
         // If all params are complete send email
-        if (phoneNumber !== '' && username !== '' && previousJob !== '' && yearsOfExperience !== '' && jobVacancy !== '') {
+        else if (phoneNumber !== '' && username !== '' && previousJob !== '' && yearsOfExperience !== '' && jobVacancy !== '') {
           const emailContent = `A new job inquiry from ${username} for the position: ${jobVacancy}.
           <br /> Previous position: ${previousJob}
           <br /> Years of experience: ${yearsOfExperience}
@@ -815,7 +837,7 @@ function greetUserText(userId) {
   }, function (error, response, body) {
     if (!error && response.statusCode === 200) {
       var user = JSON.parse(body);
-      console.log('getUserData:', user)
+      // console.log('getUserData:', user)
       if (user.first_name) {
         const greetingText = ` Welcome ${user.first_name}!  I can answer frequently asked questions and perform initial job interviews.  What can I help you with?`
         sendTextMessage(userId, greetingText);
