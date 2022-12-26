@@ -895,7 +895,7 @@ function greetUserText(userId) {
               } else {
                 if (result.rows.length === 0) {
                   const sql = `INSERT INTO users (fb_id, first_name, last_name, profile_pic) VALUES ($1, $2, $3, $4)`;
-                  client.query(sql, [userId, user.first_name, user.last_name, user.profile_pic])
+                  client.query(sql, [`${userId}`, `${user.first_name}`, `${user.last_name}`, `${user.profile_pic}`])
                 }
               }
             }
