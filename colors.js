@@ -1,9 +1,5 @@
 'use strict';
-const axios = require('axios')
-const config = require('./config')
 const db = require('./db')
-
-pg.defaults.ssl = true
 
 const getAllColors = async () => {
   const client = db.connect()
