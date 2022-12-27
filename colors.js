@@ -19,8 +19,7 @@ const getUserColor = async (userID) => {
   try {
     const getUserColorQuery = `select color from public.users where fb_id = '${userID}'`
     const getUserColorResult = await client.query(getUserColorQuery)
-    console.log(getUserColorResult)
-    return getUserColorResult.rows.length === 1 ? getUserColorQuery.rows[0]['color'] : null
+    return getUserColorResult.rows.length === 1 ? getUserColorResult.rows[0]['color'] : null
   } catch (error) {
     console.error(error)
   } finally {
