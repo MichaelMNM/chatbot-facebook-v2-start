@@ -229,7 +229,7 @@ async function handleDialogFlowAction(sender, action, messages, contexts, parame
     case 'get_iphone_colors':
       const colors = await colorsService.getAllColors()
       const colorsResponseText = `The IPhone is available in ${colors.join(', ')}.  What is your favorite color ?`
-      sendTextMessage(colorsResponseText)
+      sendTextMessage(sender, colorsResponseText)
       break;
     case 'get_current_weather':
       if (parameters.fields.hasOwnProperty('geo-city') && parameters.fields['geo-city'].stringValue !== '') {
