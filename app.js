@@ -226,11 +226,23 @@ function handleEcho(messageId, appId, metadata) {
 
 async function handleDialogFlowAction(sender, action, messages, contexts, parameters) {
   switch (action) {
+    case 'buy_iphone':
+      let buyIPhoneResponse = 'What color would you like?'
+      {
+        const userFavoriteColor = await colorsService.getUserColor(sender)
+        if (userFavoriteColor) {
+          buyIPhoneResponse = `Would you like to order it in your favorite color ${userFavoriteColor}?`
+        }
+      }
+      sendTextMessage(sender, buyIPhoneResponse)
+      break;
     case 'iphone_colors_get_favorite':
-      const userFavoriteColor = parameters.fields['color'].stringValue
-      await colorsService.updateUserColor(userFavoriteColor, sender)
-      const userFavoriteColorReply = `Oh, I like that color too.  I'll remember that.`
-      sendTextMessage(sender, userFavoriteColorReply)
+      {
+        const userFavoriteColor = parameters.fields['color'].stringValue
+        await colorsService.updateUserColor(userFavoriteColor, sender)
+        const userFavoriteColorReply = `Oh, I like that color too.  I'll remember that.`
+        sendTextMessage(sender, userFavoriteColorReply)
+      }
       break;
     case 'get_iphone_colors':
       const colors = await colorsService.getAllColors()

@@ -31,9 +31,8 @@ const updateUserColor = async (color, userID) => {
   const client = await db.connect()
   try {
     const updateUserColorQuery = `update public.users set color=$1 where fb_id=$2`
-    const updateUserColorResult = await client.query(updateUserColorQuery, [color, userID])
-    console.log(updateUserColorResult)
-    return await getUserColor(userID)
+    await client.query(updateUserColorQuery, [color, userID])
+    return color
   } catch (error) {
     console.error(error)
   } finally {
