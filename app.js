@@ -226,9 +226,15 @@ function handleEcho(messageId, appId, metadata) {
 
 async function handleDialogFlowAction(sender, action, messages, contexts, parameters) {
   switch (action) {
+    case 'iphone_colors_get_favorite':
+      const userFavoriteColor = parameters.fields['color'].stringValue
+      await colorsService.updateUserColor(userFavoriteColor, sender)
+      const userFavoriteColorReply = `Oh, I like that color too.  I'll remember that.`
+      sendTextMessage(sender, userFavoriteColorReply)
+      break;
     case 'get_iphone_colors':
       const colors = await colorsService.getAllColors()
-      const colorsResponseText = `The IPhone is available in ${colors.join(', ')}.  What is your favorite color ?`
+      const colorsResponseText = `The IPhone is available in ${colors.join(', ')}.  What is your favorite color?`
       sendTextMessage(sender, colorsResponseText)
       break;
     case 'get_current_weather':
@@ -263,11 +269,8 @@ async function handleDialogFlowAction(sender, action, messages, contexts, parame
       }
       break;
     case 'get_product_delivery_status':
-      
       handleMessages(messages, sender)
-      
       sendTypingOn(sender);
-      
       setTimeout(() => {
         const buttons = [
           {
@@ -289,10 +292,7 @@ async function handleDialogFlowAction(sender, action, messages, contexts, parame
         
         sendButtonMessage(sender, 'What would you like to do next?', buttons)
       }, 3000)
-      
       break;
-    
-    // Check for appropriate action
     case 'get_application_details':
       // Find any relevant context included in the action data
       const filteredContexts = contexts.filter(el => {
