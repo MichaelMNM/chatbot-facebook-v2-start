@@ -16,6 +16,7 @@ pg.defaults.ssl = true
 
 const userService = require('./user')
 const colorsService = require('./colors')
+const jobApplicationService = require('./jobApplication')
 
 // Messenger API parameters
 if (!config.FB_PAGE_TOKEN) {
@@ -305,6 +306,23 @@ async function handleDialogFlowAction(sender, action, messages, contexts, parame
         sendButtonMessage(sender, 'What would you like to do next?', buttons)
       }, 3000)
       break;
+    case 'get_position':
+    {
+      const filteredContexts = contexts.filter(el => {
+        return el.name.includes('job_application')
+      })
+      if (filteredContexts.length > 0 && contexts[0].parameters) {
+        const jobVacancy = getContextParameter(contexts[0], 'job_vacancy')
+        const hasApplied = jobApplicationService.hasJobApplication(sender, jobVacancy)
+        if (hasApplied) {
+          const alreadyAppliedResponse = 'You have already applied for this position.'
+          sendTextMessage(sender, alreadyAppliedResponse)
+          break;
+        }
+      }
+      handleMessages(messages, sender);
+      break;
+    }
     case 'get_application_details':
       // Find any relevant context included in the action data
       const filteredContexts = contexts.filter(el => {
@@ -321,7 +339,6 @@ async function handleDialogFlowAction(sender, action, messages, contexts, parame
         let previousJob = getContextParameter(contexts[0], 'previous_job')
         let yearsOfExperience = getContextParameter(contexts[0], 'years_of_experience')
         let jobVacancy = getContextParameter(contexts[0], 'job_vacancy')
-        
         
         // If we are asking about yearsOfExperience send this custom response
         if (phoneNumber === '' && username !== '' && previousJob !== '' && yearsOfExperience === '') {
@@ -346,6 +363,16 @@ async function handleDialogFlowAction(sender, action, messages, contexts, parame
         }
         // If all params are complete send email
         else if (phoneNumber !== '' && username !== '' && previousJob !== '' && yearsOfExperience !== '' && jobVacancy !== '') {
+          
+          const jobApplication = {
+            phoneNumber,
+            applicantName: username,
+            previousJob,
+            yearsOfExperience,
+            jobVacancy
+          }
+          const application = jobApplicationService.insertJobApplication(sender, jobApplication)
+          console.log(application)
           const emailContent = `A new job inquiry from ${username} for the position: ${jobVacancy}.
           <br /> Previous position: ${previousJob}
           <br /> Years of experience: ${yearsOfExperience}
