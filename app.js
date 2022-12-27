@@ -15,6 +15,7 @@ const pg = require('pg')
 pg.defaults.ssl = true
 
 const userService = require('./user')
+const colorsService = require('./colors')
 
 // Messenger API parameters
 if (!config.FB_PAGE_TOKEN) {
@@ -159,7 +160,6 @@ async function setSessionAndUser(senderID) {
   
   if (!usersMap.has(senderID)) {
     const user = await userService.findOrCreateUser(senderID)
-    console.log(user)
     if (!user) {
       console.error('Unable to retrieve user.')
     } else {
@@ -226,6 +226,11 @@ function handleEcho(messageId, appId, metadata) {
 
 async function handleDialogFlowAction(sender, action, messages, contexts, parameters) {
   switch (action) {
+    case 'get_iphone_colors':
+      const colors = await colorsService.getAllColors()
+      const colorsResponseText = `The IPhone is available in ${colors.join(', ')}.  What is your favorite color ?`
+      sendTextMessage(colorsResponseText)
+      break;
     case 'get_current_weather':
       if (parameters.fields.hasOwnProperty('geo-city') && parameters.fields['geo-city'].stringValue !== '') {
         // https://api.openweathermap.org/data/2.5/weather?q={city name}&appid={API key}
@@ -880,7 +885,6 @@ function receivedPostback(event) {
 
 function greetUserText(userId) {
   const user = usersMap.get(userId)
-  console.log(user)
   const greetingText = ` Welcome ${user.first_name}!  I can answer frequently asked questions and perform initial job interviews.  What can I help you with?`
   sendTextMessage(userId, greetingText);
 }
