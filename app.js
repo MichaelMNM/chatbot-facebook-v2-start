@@ -313,7 +313,7 @@ async function handleDialogFlowAction(sender, action, messages, contexts, parame
       })
       if (filteredContexts.length > 0 && contexts[0].parameters) {
         const jobVacancy = getContextParameter(contexts[0], 'job_vacancy')
-        const hasApplied = jobApplicationService.hasJobApplication(sender, jobVacancy)
+        const hasApplied = await jobApplicationService.hasJobApplication(sender, jobVacancy)
         if (hasApplied) {
           const alreadyAppliedResponse = 'You have already applied for this position.'
           sendTextMessage(sender, alreadyAppliedResponse)
@@ -371,7 +371,7 @@ async function handleDialogFlowAction(sender, action, messages, contexts, parame
             yearsOfExperience,
             jobVacancy
           }
-          const application = jobApplicationService.insertJobApplication(sender, jobApplication)
+          const application = await jobApplicationService.insertJobApplication(sender, jobApplication)
           console.log(application)
           const emailContent = `A new job inquiry from ${username} for the position: ${jobVacancy}.
           <br /> Previous position: ${previousJob}
