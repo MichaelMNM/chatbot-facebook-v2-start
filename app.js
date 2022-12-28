@@ -14,7 +14,7 @@ const fbService = require('./services/fb-service')
 const dialogflowService = require('./services/dialogflow-service')
 const emailService = require('./services/email-service')
 const userService = require('./services/user-service')
-const colorsService = require('./services/colors-service')
+const colorService = require('./services/color-service')
 const jobApplicationService = require('./services/job-application-service')
 const weatherService = require('./services/weather-service')
 
@@ -219,7 +219,7 @@ async function handleDialogFlowAction(sender, action, messages, contexts, parame
     case 'buy_iphone':
       let buyIPhoneResponse = 'What color would you like?'
       {
-        const userFavoriteColor = await colorsService.getUserColor(sender)
+        const userFavoriteColor = await colorService.getUserColor(sender)
         if (userFavoriteColor) {
           buyIPhoneResponse = `Would you like to order it in your favorite color ${userFavoriteColor}?`
         }
@@ -229,13 +229,13 @@ async function handleDialogFlowAction(sender, action, messages, contexts, parame
     case 'iphone_colors_get_favorite':
       {
         const userFavoriteColor = parameters.fields['color'].stringValue
-        await colorsService.updateUserColor(userFavoriteColor, sender)
+        await colorService.updateUserColor(userFavoriteColor, sender)
         const userFavoriteColorReply = `Oh, I like that color too.  I'll remember that.`
         fbService.sendTextMessage(sender, userFavoriteColorReply)
       }
       break;
     case 'get_iphone_colors':
-      const colors = await colorsService.getAllColors()
+      const colors = await colorService.getAllColors()
       const colorsResponseText = `The IPhone is available in ${colors.join(', ')}.  What is your favorite color?`
       fbService.sendTextMessage(sender, colorsResponseText)
       break;
