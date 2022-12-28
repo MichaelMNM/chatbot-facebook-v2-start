@@ -213,6 +213,7 @@ function handleEcho(messageId, appId, metadata) {
 }
 
 async function handleDialogFlowAction(sender, action, messages, contexts, parameters) {
+  console.log(action)
   switch (action) {
     case 'buy_iphone':
       let buyIPhoneResponse = 'What color would you like?'
@@ -469,21 +470,23 @@ function handleMessages(messages, sender) {
   }
 }
 
-function handleDialogFlowResponse(sender, response) {
+async function handleDialogFlowResponse(sender, response) {
   let responseText = response.fulfillmentMessages.fulfillmentText;
-  
   let messages = response.fulfillmentMessages;
   let action = response.action;
   let contexts = response.outputContexts;
   let parameters = response.parameters;
   
   fbService.sendTypingOff(sender);
+  console.log('**** DIALOGFLOW RESPONSE ****')
+  console.log(response)
+  console.log('******************************')
   
   if (isDefined(action)) {
-    handleDialogFlowAction(sender, action, messages, contexts, parameters);
+    await handleDialogFlowAction(sender, action, messages, contexts, parameters);
   } else if (isDefined(messages)) {
     handleMessages(messages, sender);
-  } else if (responseText == '' && !isDefined(action)) {
+  } else if (responseText === '' && !isDefined(action)) {
     //dialogflow could not evaluate input.
     fbService.sendTextMessage(sender, 'I\'m not sure what you want. Can you be more specific?');
   } else if (isDefined(responseText)) {
