@@ -5,6 +5,7 @@ const express = require('express');
 const crypto = require('crypto');
 const bodyParser = require('body-parser');
 const app = express();
+const {isDefined} = require('./utils')
 const {v4: uuidv4} = require('uuid');
 const sgMail = require('@sendgrid/mail');
 const pg = require('pg')
@@ -665,18 +666,6 @@ function verifyRequestSignature(req, res, buf) {
       throw new Error('Couldn\'t validate the request signature.');
     }
   }
-}
-
-function isDefined(obj) {
-  if (typeof obj == 'undefined') {
-    return false;
-  }
-  
-  if (!obj) {
-    return false;
-  }
-  
-  return obj != null;
 }
 
 // Spin up the server
