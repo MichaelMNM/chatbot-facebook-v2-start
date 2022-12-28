@@ -187,7 +187,8 @@ async function receivedMessage(event) {
   if (messageText) {
     //send message to api.ai
     const senderSessionId = sessionIds.get(senderID)
-    await dialogflowService.sendToDialogFlow(senderID, senderSessionId, messageText);
+    const dialogflowResponse = await dialogflowService.sendToDialogFlow(senderID, senderSessionId, messageText);
+    await handleDialogFlowResponse(dialogflowResponse)
   } else if (messageAttachments) {
     handleMessageAttachments(messageAttachments, senderID);
   }
@@ -198,12 +199,13 @@ function handleMessageAttachments(messageAttachments, senderID) {
   fbService.sendTextMessage(senderID, 'Attachment received. Thank you.');
 }
 
-function handleQuickReply(senderID, quickReply, messageId) {
+async function handleQuickReply(senderID, quickReply, messageId) {
   var quickReplyPayload = quickReply.payload;
   console.log('Quick reply for message %s with payload %s', messageId, quickReplyPayload);
   //send payload to api.ai
   const senderSessionId = sessionIds.get(senderID)
-  dialogflowService.sendToDialogFlow(senderID, senderSessionId, quickReplyPayload);
+  const dialogflowResponse = await dialogflowService.sendToDialogFlow(senderID, senderSessionId, quickReplyPayload);
+  await handleDialogFlowResponse(dialogflowResponse)
 }
 
 //https://developers.facebook.com/docs/messenger-platform/webhook-reference/message-echo
@@ -518,7 +520,8 @@ async function receivedPostback(event) {
     
     case 'JOB_INQUIRY':
       const senderSessionId = sessionIds.get(senderID)
-      await dialogflowService.sendToDialogFlow(senderID, senderSessionId,'job openings', '')
+      const dialogflowResponse = await dialogflowService.sendToDialogFlow(senderID, senderSessionId,'job openings', '')
+      await handleDialogFlowResponse(dialogflowResponse)
       break;
     
     case 'CHAT':
