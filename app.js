@@ -76,8 +76,6 @@ app.use(bodyParser.urlencoded({
 // Process application/json
 app.use(bodyParser.json());
 
-
-
 const sessionIds = new Map();
 const usersMap = new Map()
 
@@ -243,7 +241,7 @@ async function handleDialogFlowAction(sender, action, messages, contexts, parame
       if (parameters.fields.hasOwnProperty('geo-city') && parameters.fields['geo-city'].stringValue !== '') {
         try {
           const city = parameters.fields['geo-city'].stringValue
-          const weather = weatherService.getCurrentWeather(city)
+          const weather = await weatherService.getCurrentWeather(city)
           console.log(weather)
           if (weather.hasOwnProperty('weather')) {
             const reply = `${messages[0].text.text} ${weather['weather'][0]['description']}`;
