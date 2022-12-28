@@ -1,5 +1,6 @@
 'use strict';
 
+const {jsonToStructProto} = require('../utils')
 const config = require('../config')
 const dialogflow = require('dialogflow')
 
@@ -15,15 +16,12 @@ const sessionClient = new dialogflow.SessionsClient(
   }
 );
 
-async function sendToDialogFlow(sender, sessionId, textString, params) {
+async function sendTextToDialogFlow(sender, sessionId, textString, params) {
   try {
-    console.log(config.GOOGLE_PROJECT_ID, sessionId, config.DF_LANGUAGE_CODE)
     const sessionPath = sessionClient.sessionPath(
       config.GOOGLE_PROJECT_ID,
       sessionId
     );
-    console.log(sessionPath)
-    
     
     const request = {
       session: sessionPath,
@@ -47,6 +45,31 @@ async function sendToDialogFlow(sender, sessionId, textString, params) {
   }
 }
 
+const sendEventToDialogFlow = async (sender, sessionId, event, params = {}) => {
+  const sessionPath = sessionClient.sessionPath(
+    config.GOOGLE_PROJECT_ID,
+    sessionId
+  );
+  try {
+    const request = {
+      session: sessionPath,
+      queryInput: {
+        event: {
+          name: event,
+          parameters: jsonToStructProto(params),
+          languageCode: config.DF_LANGUAGE_CODE
+        }
+      }
+    }
+    
+    const responses = await sessionClient.detectIntent(request)
+    return responses[0].queryResult
+  } catch (error) {
+    console.error(error)
+  }
+}
+
 module.exports = {
-  sendToDialogFlow
+  sendTextToDialogFlow,
+  sendEventToDialogFlow
 }

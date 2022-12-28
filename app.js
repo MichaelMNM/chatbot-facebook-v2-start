@@ -189,7 +189,7 @@ async function receivedMessage(event) {
     //send message to api.ai
     const senderSessionId = sessionIds.get(senderID)
     fbService.sendTypingOn(senderID)
-    const dialogflowResponse = await dialogflowService.sendToDialogFlow(senderID, senderSessionId, messageText);
+    const dialogflowResponse = await dialogflowService.sendTextToDialogFlow(senderID, senderSessionId, messageText);
     await handleDialogFlowResponse(senderID, dialogflowResponse)
   } else if (messageAttachments) {
     handleMessageAttachments(messageAttachments, senderID);
@@ -207,7 +207,7 @@ async function handleQuickReply(senderID, quickReply, messageId) {
   //send payload to api.ai
   const senderSessionId = sessionIds.get(senderID)
   fbService.sendTypingOn(senderID)
-  const dialogflowResponse = await dialogflowService.sendToDialogFlow(senderID, senderSessionId, quickReplyPayload);
+  const dialogflowResponse = await dialogflowService.sendTextToDialogFlow(senderID, senderSessionId, quickReplyPayload);
   await handleDialogFlowResponse(senderID, dialogflowResponse)
 }
 
@@ -516,7 +516,7 @@ async function receivedPostback(event) {
     
     case 'JOB_INQUIRY':
       const senderSessionId = sessionIds.get(senderID)
-      const dialogflowResponse = await dialogflowService.sendToDialogFlow(senderID, senderSessionId,'job openings', '')
+      const dialogflowResponse = await dialogflowService.sendEventToDialogFlow(senderID, senderSessionId,'JOB_OPENINGS', '')
       await handleDialogFlowResponse(senderID, dialogflowResponse)
       break;
     
