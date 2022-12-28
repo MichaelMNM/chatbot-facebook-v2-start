@@ -238,6 +238,8 @@ async function handleDialogFlowAction(sender, action, messages, contexts, parame
       fbService.sendTextMessage(sender, colorsResponseText)
       break;
     case 'get_current_weather':
+      console.log('In get_current_weather')
+      console.log(parameters.fields)
       if (parameters.fields.hasOwnProperty('geo-city') && parameters.fields['geo-city'].stringValue !== '') {
         try {
           const city = parameters.fields['geo-city'].stringValue
@@ -252,6 +254,7 @@ async function handleDialogFlowAction(sender, action, messages, contexts, parame
           fbService.sendTextMessage(sender, 'Current weather is unavailable.')
         }
       } else {
+        console.log('No City')
         // No city?  Forward bot question asking for entity
         handleMessages(messages, sender)
       }
