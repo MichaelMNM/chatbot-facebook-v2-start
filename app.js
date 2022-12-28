@@ -188,7 +188,7 @@ async function receivedMessage(event) {
     //send message to api.ai
     const senderSessionId = sessionIds.get(senderID)
     const dialogflowResponse = await dialogflowService.sendToDialogFlow(senderID, senderSessionId, messageText);
-    await handleDialogFlowResponse(dialogflowResponse)
+    await handleDialogFlowResponse(senderID, dialogflowResponse)
   } else if (messageAttachments) {
     handleMessageAttachments(messageAttachments, senderID);
   }
@@ -205,7 +205,7 @@ async function handleQuickReply(senderID, quickReply, messageId) {
   //send payload to api.ai
   const senderSessionId = sessionIds.get(senderID)
   const dialogflowResponse = await dialogflowService.sendToDialogFlow(senderID, senderSessionId, quickReplyPayload);
-  await handleDialogFlowResponse(dialogflowResponse)
+  await handleDialogFlowResponse(senderID, dialogflowResponse)
 }
 
 //https://developers.facebook.com/docs/messenger-platform/webhook-reference/message-echo
@@ -521,7 +521,7 @@ async function receivedPostback(event) {
     case 'JOB_INQUIRY':
       const senderSessionId = sessionIds.get(senderID)
       const dialogflowResponse = await dialogflowService.sendToDialogFlow(senderID, senderSessionId,'job openings', '')
-      await handleDialogFlowResponse(dialogflowResponse)
+      await handleDialogFlowResponse(senderID, dialogflowResponse)
       break;
     
     case 'CHAT':
