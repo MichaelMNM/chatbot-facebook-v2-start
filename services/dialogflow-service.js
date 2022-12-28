@@ -63,6 +63,7 @@ const sendEventToDialogFlow = async (sender, sessionId, event, params = {}) => {
     }
     
     const responses = await sessionClient.detectIntent(request)
+    console.log(responses)
     return responses[0].queryResult
   } catch (error) {
     console.error(error)

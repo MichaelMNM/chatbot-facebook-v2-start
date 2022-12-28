@@ -516,7 +516,7 @@ async function receivedPostback(event) {
     
     case 'JOB_INQUIRY':
       const senderSessionId = sessionIds.get(senderID)
-      const dialogflowResponse = await dialogflowService.sendEventToDialogFlow(senderID, senderSessionId,'JOB_OPENINGS', '')
+      const dialogflowResponse = await dialogflowService.sendEventToDialogFlow(senderID, senderSessionId,'JOB_OPENINGS')
       await handleDialogFlowResponse(senderID, dialogflowResponse)
       break;
     
