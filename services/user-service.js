@@ -1,7 +1,7 @@
 'use strict';
 
 const axios = require('axios')
-const config = require('./config')
+const config = require('../config')
 const pg = require('pg')
 const db = require('./db')
 pg.defaults.ssl = true
