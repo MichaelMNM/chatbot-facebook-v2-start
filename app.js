@@ -1,22 +1,22 @@
 'use strict';
 
-const dialogflow = require('dialogflow');
 const config = require('./config');
 const express = require('express');
 const crypto = require('crypto');
 const bodyParser = require('body-parser');
-const request = require('request');
 const app = express();
 const {v4: uuidv4} = require('uuid');
 const sgMail = require('@sendgrid/mail');
-const {DF_LANGUAGE_CODE} = require('./config')
-const axios = require('axios')
 const pg = require('pg')
 pg.defaults.ssl = true
 
-const userService = require('./user')
-const colorsService = require('./colors')
-const jobApplicationService = require('./jobApplication')
+const fbService = require('./services/fb-service')
+const dialogflowService = require('./services/dialogflow-service')
+const emailService = require('./services/email-service')
+const userService = require('./services/user-service')
+const colorsService = require('./services/colors-service')
+const jobApplicationService = require('./services/job-application-service')
+const weatherService = require('./services/weather-service')
 
 // Messenger API parameters
 if (!config.FB_PAGE_TOKEN) {
@@ -76,18 +76,6 @@ app.use(bodyParser.urlencoded({
 // Process application/json
 app.use(bodyParser.json());
 
-
-const credentials = {
-  client_email: config.GOOGLE_CLIENT_EMAIL,
-  private_key: config.GOOGLE_PRIVATE_KEY,
-};
-
-const sessionClient = new dialogflow.SessionsClient(
-  {
-    projectId: config.GOOGLE_PROJECT_ID,
-    credentials
-  }
-);
 
 
 const sessionIds = new Map();
@@ -169,14 +157,14 @@ async function setSessionAndUser(senderID) {
   }
 }
 
-function receivedMessage(event) {
+async function receivedMessage(event) {
   
   var senderID = event.sender.id;
   var recipientID = event.recipient.id;
   var timeOfMessage = event.timestamp;
   var message = event.message;
   
-  setSessionAndUser(senderID)
+  await setSessionAndUser(senderID)
   //console.log("Received message for user %d and page %d at %d with message:", senderID, recipientID, timeOfMessage);
   //console.log(JSON.stringify(message));
   
@@ -198,10 +186,10 @@ function receivedMessage(event) {
     return;
   }
   
-  
   if (messageText) {
     //send message to api.ai
-    sendToDialogFlow(senderID, messageText);
+    const senderSessionId = sessionIds.get(senderID)
+    await dialogflowService.sendToDialogFlow(senderID, senderSessionId, messageText);
   } else if (messageAttachments) {
     handleMessageAttachments(messageAttachments, senderID);
   }
@@ -209,14 +197,15 @@ function receivedMessage(event) {
 
 function handleMessageAttachments(messageAttachments, senderID) {
   //for now just reply
-  sendTextMessage(senderID, 'Attachment received. Thank you.');
+  fbService.sendTextMessage(senderID, 'Attachment received. Thank you.');
 }
 
 function handleQuickReply(senderID, quickReply, messageId) {
   var quickReplyPayload = quickReply.payload;
   console.log('Quick reply for message %s with payload %s', messageId, quickReplyPayload);
   //send payload to api.ai
-  sendToDialogFlow(senderID, quickReplyPayload);
+  const senderSessionId = sessionIds.get(senderID)
+  dialogflowService.sendToDialogFlow(senderID, senderSessionId, quickReplyPayload);
 }
 
 //https://developers.facebook.com/docs/messenger-platform/webhook-reference/message-echo
@@ -235,46 +224,34 @@ async function handleDialogFlowAction(sender, action, messages, contexts, parame
           buyIPhoneResponse = `Would you like to order it in your favorite color ${userFavoriteColor}?`
         }
       }
-      sendTextMessage(sender, buyIPhoneResponse)
+      fbService.sendTextMessage(sender, buyIPhoneResponse)
       break;
     case 'iphone_colors_get_favorite':
       {
         const userFavoriteColor = parameters.fields['color'].stringValue
         await colorsService.updateUserColor(userFavoriteColor, sender)
         const userFavoriteColorReply = `Oh, I like that color too.  I'll remember that.`
-        sendTextMessage(sender, userFavoriteColorReply)
+        fbService.sendTextMessage(sender, userFavoriteColorReply)
       }
       break;
     case 'get_iphone_colors':
       const colors = await colorsService.getAllColors()
       const colorsResponseText = `The IPhone is available in ${colors.join(', ')}.  What is your favorite color?`
-      sendTextMessage(sender, colorsResponseText)
+      fbService.sendTextMessage(sender, colorsResponseText)
       break;
     case 'get_current_weather':
       if (parameters.fields.hasOwnProperty('geo-city') && parameters.fields['geo-city'].stringValue !== '') {
-        // https://api.openweathermap.org/data/2.5/weather?q={city name}&appid={API key}
-        /*
-        Please use Geocoder API if you need automatic convert city names and zip-codes to geo coordinates
-        and the other way around.
-        Please note that API requests by city name, zip-codes and city id have been deprecated.
-        Although they are still available for use, bug fixing and updates are no longer available
-        for this functionality
-        */
-        const params = {
-          appid: config.OPENWEATHER_API_KEY,
-          q: parameters.fields['geo-city'].stringValue
-        }
         try {
-          const response = await axios.get('https://api.openweathermap.org/data/2.5/weather', {params})
-          const weather = response.data
+          const city = parameters.fields['geo-city'].stringValue
+          const weather = weatherService.getCurrentWeather(city)
           console.log(weather)
           if (weather.hasOwnProperty('weather')) {
             const reply = `${messages[0].text.text} ${weather['weather'][0]['description']}`;
-            sendTextMessage(sender, reply)
+            fbService.sendTextMessage(sender, reply)
           }
         } catch (error) {
           console.log(error)
-          sendTextMessage(sender, 'Current weather is unavailable.')
+          fbService.sendTextMessage(sender, 'Current weather is unavailable.')
         }
       } else {
         // No city?  Forward bot question asking for entity
@@ -283,7 +260,7 @@ async function handleDialogFlowAction(sender, action, messages, contexts, parame
       break;
     case 'get_product_delivery_status':
       handleMessages(messages, sender)
-      sendTypingOn(sender);
+      fbService.sendTypingOn(sender);
       setTimeout(() => {
         const buttons = [
           {
@@ -303,7 +280,7 @@ async function handleDialogFlowAction(sender, action, messages, contexts, parame
           }
         ]
         
-        sendButtonMessage(sender, 'What would you like to do next?', buttons)
+        fbService.sendButtonMessage(sender, 'What would you like to do next?', buttons)
       }, 3000)
       break;
     case 'get_position':
@@ -316,7 +293,7 @@ async function handleDialogFlowAction(sender, action, messages, contexts, parame
         const hasApplied = await jobApplicationService.hasJobApplication(sender, jobVacancy)
         if (hasApplied) {
           const alreadyAppliedResponse = 'You have already applied for this position.'
-          sendTextMessage(sender, alreadyAppliedResponse)
+          fbService.sendTextMessage(sender, alreadyAppliedResponse)
           break;
         }
       }
@@ -359,7 +336,7 @@ async function handleDialogFlowAction(sender, action, messages, contexts, parame
               'payload': 'More than 10 years'
             }
           ]
-          sendQuickReply(sender, messages[0].text.text[0], replies)
+          fbService.sendQuickReply(sender, messages[0].text.text[0], replies)
         }
         // If all params are complete send email
         else if (phoneNumber !== '' && username !== '' && previousJob !== '' && yearsOfExperience !== '' && jobVacancy !== '') {
@@ -372,13 +349,12 @@ async function handleDialogFlowAction(sender, action, messages, contexts, parame
             jobVacancy
           }
           const application = await jobApplicationService.insertJobApplication(sender, jobApplication)
-          console.log(application)
           const emailContent = `A new job inquiry from ${username} for the position: ${jobVacancy}.
           <br /> Previous position: ${previousJob}
           <br /> Years of experience: ${yearsOfExperience}
           <br /> Phone Number: ${phoneNumber}
           `
-          sendEmail('New job Application', emailContent)
+          await emailService.sendEmail('New job Application', emailContent)
         }
       }
       
@@ -401,7 +377,7 @@ function handleMessage(message, sender) {
     case 'text': //text
       message.text.text.forEach((text) => {
         if (text !== '') {
-          sendTextMessage(sender, text);
+          fbService.sendTextMessage(sender, text);
         }
       });
       break;
@@ -416,10 +392,10 @@ function handleMessage(message, sender) {
           }
         replies.push(reply);
       });
-      sendQuickReply(sender, message.quickReplies.title, replies);
+      fbService.sendQuickReply(sender, message.quickReplies.title, replies);
       break;
     case 'image': //image
-      sendImageMessage(sender, message.image.imageUri);
+      fbService.sendImageMessage(sender, message.image.imageUri);
       break;
   }
 }
@@ -458,7 +434,7 @@ function handleCardMessages(messages, sender) {
     };
     elements.push(element);
   }
-  sendGenericMessage(sender, elements);
+  fbService.sendGenericMessage(sender, elements);
 }
 
 function handleMessages(messages, sender) {
@@ -500,7 +476,7 @@ function handleDialogFlowResponse(sender, response) {
   let contexts = response.outputContexts;
   let parameters = response.parameters;
   
-  sendTypingOff(sender);
+  fbService.sendTypingOff(sender);
   
   if (isDefined(action)) {
     handleDialogFlowAction(sender, action, messages, contexts, parameters);
@@ -508,377 +484,11 @@ function handleDialogFlowResponse(sender, response) {
     handleMessages(messages, sender);
   } else if (responseText == '' && !isDefined(action)) {
     //dialogflow could not evaluate input.
-    sendTextMessage(sender, 'I\'m not sure what you want. Can you be more specific?');
+    fbService.sendTextMessage(sender, 'I\'m not sure what you want. Can you be more specific?');
   } else if (isDefined(responseText)) {
-    sendTextMessage(sender, responseText);
+    fbService.sendTextMessage(sender, responseText);
   }
 }
-
-async function sendToDialogFlow(sender, textString, params) {
-  
-  sendTypingOn(sender);
-  
-  try {
-    console.log(config.GOOGLE_PROJECT_ID, sessionIds.get(sender), config.DF_LANGUAGE_CODE)
-    const sessionPath = sessionClient.sessionPath(
-      config.GOOGLE_PROJECT_ID,
-      sessionIds.get(sender)
-    );
-    console.log(sessionPath)
-    
-    
-    const request = {
-      session: sessionPath,
-      queryInput: {
-        text: {
-          text: textString,
-          languageCode: config.DF_LANGUAGE_CODE,
-        },
-      },
-      queryParams: {
-        payload: {
-          data: params
-        }
-      }
-    };
-    const responses = await sessionClient.detectIntent(request);
-    
-    const result = responses[0].queryResult;
-    handleDialogFlowResponse(sender, result);
-  } catch (e) {
-    console.log('error');
-    console.log(e);
-  }
-  
-}
-
-function sendTextMessage(recipientId, text) {
-  var messageData = {
-    recipient: {
-      id: recipientId
-    },
-    message: {
-      text: text
-    }
-  }
-  callSendAPI(messageData);
-}
-
-/*
- * Send an image using the Send API.
- *
- */
-function sendImageMessage(recipientId, imageUrl) {
-  var messageData = {
-    recipient: {
-      id: recipientId
-    },
-    message: {
-      attachment: {
-        type: 'image',
-        payload: {
-          url: imageUrl
-        }
-      }
-    }
-  };
-  
-  callSendAPI(messageData);
-}
-
-/*
- * Send a Gif using the Send API.
- *
- */
-function sendGifMessage(recipientId) {
-  var messageData = {
-    recipient: {
-      id: recipientId
-    },
-    message: {
-      attachment: {
-        type: 'image',
-        payload: {
-          url: config.SERVER_URL + '/assets/instagram_logo.gif'
-        }
-      }
-    }
-  };
-  
-  callSendAPI(messageData);
-}
-
-/*
- * Send audio using the Send API.
- *
- */
-function sendAudioMessage(recipientId) {
-  var messageData = {
-    recipient: {
-      id: recipientId
-    },
-    message: {
-      attachment: {
-        type: 'audio',
-        payload: {
-          url: config.SERVER_URL + '/assets/sample.mp3'
-        }
-      }
-    }
-  };
-  
-  callSendAPI(messageData);
-}
-
-/*
- * Send a video using the Send API.
- * example videoName: "/assets/allofus480.mov"
- */
-function sendVideoMessage(recipientId, videoName) {
-  var messageData = {
-    recipient: {
-      id: recipientId
-    },
-    message: {
-      attachment: {
-        type: 'video',
-        payload: {
-          url: config.SERVER_URL + videoName
-        }
-      }
-    }
-  };
-  
-  callSendAPI(messageData);
-}
-
-/*
- * Send a video using the Send API.
- * example fileName: fileName"/assets/test.txt"
- */
-function sendFileMessage(recipientId, fileName) {
-  var messageData = {
-    recipient: {
-      id: recipientId
-    },
-    message: {
-      attachment: {
-        type: 'file',
-        payload: {
-          url: config.SERVER_URL + fileName
-        }
-      }
-    }
-  };
-  
-  callSendAPI(messageData);
-}
-
-
-/*
- * Send a button message using the Send API.
- *
- */
-function sendButtonMessage(recipientId, text, buttons) {
-  var messageData = {
-    recipient: {
-      id: recipientId
-    },
-    message: {
-      attachment: {
-        type: 'template',
-        payload: {
-          template_type: 'button',
-          text: text,
-          buttons: buttons
-        }
-      }
-    }
-  };
-  
-  callSendAPI(messageData);
-}
-
-
-function sendGenericMessage(recipientId, elements) {
-  var messageData = {
-    recipient: {
-      id: recipientId
-    },
-    message: {
-      attachment: {
-        type: 'template',
-        payload: {
-          template_type: 'generic',
-          elements: elements
-        }
-      }
-    }
-  };
-  
-  callSendAPI(messageData);
-}
-
-
-function sendReceiptMessage(recipientId, recipient_name, currency, payment_method,
-                            timestamp, elements, address, summary, adjustments) {
-  // Generate a random receipt ID as the API requires a unique ID
-  var receiptId = 'order' + Math.floor(Math.random() * 1000);
-  
-  var messageData = {
-    recipient: {
-      id: recipientId
-    },
-    message: {
-      attachment: {
-        type: 'template',
-        payload: {
-          template_type: 'receipt',
-          recipient_name: recipient_name,
-          order_number: receiptId,
-          currency: currency,
-          payment_method: payment_method,
-          timestamp: timestamp,
-          elements: elements,
-          address: address,
-          summary: summary,
-          adjustments: adjustments
-        }
-      }
-    }
-  };
-  
-  callSendAPI(messageData);
-}
-
-/*
- * Send a message with Quick Reply buttons.
- *
- */
-function sendQuickReply(recipientId, text, replies, metadata) {
-  var messageData = {
-    recipient: {
-      id: recipientId
-    },
-    message: {
-      text: text,
-      metadata: isDefined(metadata) ? metadata : '',
-      quick_replies: replies
-    }
-  };
-  
-  callSendAPI(messageData);
-}
-
-/*
- * Send a read receipt to indicate the message has been read
- *
- */
-function sendReadReceipt(recipientId) {
-  
-  var messageData = {
-    recipient: {
-      id: recipientId
-    },
-    sender_action: 'mark_seen'
-  };
-  
-  callSendAPI(messageData);
-}
-
-/*
- * Turn typing indicator on
- *
- */
-function sendTypingOn(recipientId) {
-  
-  
-  var messageData = {
-    recipient: {
-      id: recipientId
-    },
-    sender_action: 'typing_on'
-  };
-  
-  callSendAPI(messageData);
-}
-
-/*
- * Turn typing indicator off
- *
- */
-function sendTypingOff(recipientId) {
-  
-  
-  var messageData = {
-    recipient: {
-      id: recipientId
-    },
-    sender_action: 'typing_off'
-  };
-  
-  callSendAPI(messageData);
-}
-
-/*
- * Send a message with the account linking call-to-action
- *
- */
-function sendAccountLinking(recipientId) {
-  var messageData = {
-    recipient: {
-      id: recipientId
-    },
-    message: {
-      attachment: {
-        type: 'template',
-        payload: {
-          template_type: 'button',
-          text: 'Welcome. Link your account.',
-          buttons: [{
-            type: 'account_link',
-            url: config.SERVER_URL + '/authorize'
-          }]
-        }
-      }
-    }
-  };
-  
-  callSendAPI(messageData);
-}
-
-/*
- * Call the Send API. The message data goes in the body. If successful, we'll
- * get the message id in a response
- *
- */
-function callSendAPI(messageData) {
-  request({
-    uri: 'https://graph.facebook.com/v3.2/me/messages',
-    qs: {
-      access_token: config.FB_PAGE_TOKEN
-    },
-    method: 'POST',
-    json: messageData
-    
-  }, function (error, response, body) {
-    if (!error && response.statusCode == 200) {
-      var recipientId = body.recipient_id;
-      var messageId = body.message_id;
-      
-      if (messageId) {
-        console.log('Successfully sent message with id %s to recipient %s',
-          messageId, recipientId);
-      } else {
-        console.log('Successfully called Send API for recipient %s',
-          recipientId);
-      }
-    } else {
-      console.error('Failed calling Send API', response.statusCode, response.statusMessage, body.error);
-    }
-  });
-}
-
 
 /*
  * Postback Event
@@ -887,11 +497,11 @@ function callSendAPI(messageData) {
  * https://developers.facebook.com/docs/messenger-platform/webhook-reference/postback-received
  *
  */
-function receivedPostback(event) {
+async function receivedPostback(event) {
   var senderID = event.sender.id;
   var recipientID = event.recipient.id;
   var timeOfPostback = event.timestamp;
-  setSessionAndUser(senderID)
+  await setSessionAndUser(senderID)
   
   // The 'payload' param is a developer-defined field which is set in a postback
   // button for Structured Messages.
@@ -903,16 +513,17 @@ function receivedPostback(event) {
       break;
     
     case 'JOB_INQUIRY':
-      sendToDialogFlow(senderID, 'job openings', '')
+      const senderSessionId = sessionIds.get(senderID)
+      await dialogflowService.sendToDialogFlow(senderID, senderSessionId,'job openings', '')
       break;
     
     case 'CHAT':
-      sendTextMessage(senderID, 'Fantastic.  What else would you like to chat about?');
+      fbService.sendTextMessage(senderID, 'Fantastic.  What else would you like to chat about?');
       break;
     
     default:
       //unindentified payload
-      sendTextMessage(senderID, 'I\'m not sure what you want. Can you be more specific?');
+      fbService.sendTextMessage(senderID, 'I\'m not sure what you want. Can you be more specific?');
       break;
     
   }
@@ -925,7 +536,7 @@ function receivedPostback(event) {
 function greetUserText(userId) {
   const user = usersMap.get(userId)
   const greetingText = ` Welcome ${user.first_name}!  I can answer frequently asked questions and perform initial job interviews.  What can I help you with?`
-  sendTextMessage(userId, greetingText);
+  fbService.sendTextMessage(userId, greetingText);
 }
 
 
@@ -1018,7 +629,7 @@ function receivedAuthentication(event) {
   
   // When an authentication is received, we'll send a message back to the sender
   // to let them know it was successful.
-  sendTextMessage(senderID, 'Authentication successful');
+  fbService.sendTextMessage(senderID, 'Authentication successful');
 }
 
 /*
@@ -1045,25 +656,6 @@ function verifyRequestSignature(req, res, buf) {
     
     if (signatureHash != expectedHash) {
       throw new Error('Couldn\'t validate the request signature.');
-    }
-  }
-}
-
-async function sendEmail(subject, content) {
-  const msg = {
-    to: config.EMAIL_TO,
-    from: config.EMAIL_FROM, // Use the email address or domain you verified above
-    subject: subject,
-    text: content,
-    html: content
-  };
-  
-  try {
-    await sgMail.send(msg);
-  } catch (error) {
-    console.error(error);
-    if (error.response) {
-      console.error(error.response.body)
     }
   }
 }
