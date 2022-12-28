@@ -3,7 +3,7 @@
 const axios = require('axios')
 const config = require('../config')
 const pg = require('pg')
-const db = require('./db')
+const db = require('../db')
 pg.defaults.ssl = true
 
 const _getFacebookUserData = (userId) => {

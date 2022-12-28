@@ -1,5 +1,5 @@
 'use strict';
-const db = require('./db')
+const db = require('../db')
 
 const insertJobApplication = async (userId, jobApplication) => {
   const client = await db.connect()
