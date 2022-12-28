@@ -26,9 +26,22 @@ const _insertUserData = async (userId, userData) => {
 const _getUserByFacebookId = async (userId) => {
   const client = await db.connect()
   try {
-    const queryFindUserByFacebookId = `SELECT * from users WHERE fb_id = '${userId}' LIMIT 1`
+    const queryFindUserByFacebookId = `SELECT fb_id, first_name, last_name from users WHERE fb_id = '${userId}' LIMIT 1`
     const result = await client.query(queryFindUserByFacebookId)
     return result.rows.length === 1 ? result.rows[0] : null
+  } catch (error) {
+    console.error(error)
+  } finally {
+    client.release();
+  }
+}
+
+const _getUsersByPreference = async (preference, setting) => {
+  const client = await db.connect()
+  try {
+    const queryUsersByPreference = `SELECT * from users WHERE '${preference}' = '${setting}'`
+    const result = await client.query(queryUsersByPreference)
+    return result.rows
   } catch (error) {
     console.error(error)
   } finally {
@@ -52,6 +65,24 @@ const findOrCreateUser = async (userId) => {
   }
 }
 
+const setNewsLetterPreference = async (userId, setting) => {
+  const client = await db.connect()
+  try {
+    const querySetNewsLetterPreference = 'UPDATE users set newsletter=$1 where fb_id=$2';
+    return await client.query(querySetNewsLetterPreference, [setting, userId])
+  } catch (error) {
+    console.error(error)
+  } finally {
+    client.release();
+  }
+}
+
+const findNewsletterUsers = (setting) => {
+  return _getUsersByPreference('newsletter', setting)
+}
+
 module.exports = {
-  findOrCreateUser
+  findOrCreateUser,
+  setNewsLetterPreference,
+  findNewsletterUsers
 }

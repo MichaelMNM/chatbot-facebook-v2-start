@@ -18,6 +18,7 @@ const userService = require('./services/user-service')
 const colorService = require('./services/color-service')
 const jobApplicationService = require('./services/job-application-service')
 const weatherService = require('./services/weather-service')
+const {sendTextMessage} = require('./services/fb-service')
 
 // Messenger API parameters
 if (!config.FB_PAGE_TOKEN) {
@@ -207,8 +208,38 @@ async function handleQuickReply(senderID, quickReply, messageId) {
   //send payload to api.ai
   const senderSessionId = sessionIds.get(senderID)
   fbService.sendTypingOn(senderID)
-  const dialogflowResponse = await dialogflowService.sendTextToDialogFlow(senderID, senderSessionId, quickReplyPayload);
-  await handleDialogFlowResponse(senderID, dialogflowResponse)
+  
+  switch(quickReplyPayload) {
+    case 'NEWS_PER_DAY':
+      try {
+        const subscribed = await userService.setNewsLetterPreference(senderID, 1)
+        if (subscribed) {
+          const subscribedResponse = `Thanks for subscribing.  Send message 'unsubscribe' to stop receiving messages.`
+          fbService.sendTextMessage(senderID, subscribedResponse)
+        }
+      } catch (error) {
+        const errorResponse = `Unable to subscribe.  Try your request later.`
+        fbService.sendTextMessage(senderID, errorResponse)
+      }
+      break;
+    case 'NEWS_PER_WEEK':
+      try {
+        const subscribed = await userService.setNewsLetterPreference(senderID, 2)
+        if (subscribed) {
+          const subscribedResponse = `Thanks for subscribing.  Send message 'unsubscribe' to stop receiving messages.`
+          fbService.sendTextMessage(senderID, subscribedResponse)
+        }
+      } catch (error) {
+        const errorResponse = `Unable to subscribe.  Try your request later.`
+        fbService.sendTextMessage(senderID, errorResponse)
+      }
+      break;
+    default:
+      const dialogflowResponse = await dialogflowService.sendTextToDialogFlow(senderID, senderSessionId, quickReplyPayload);
+      await handleDialogFlowResponse(senderID, dialogflowResponse)
+      break;
+    
+  }
 }
 
 //https://developers.facebook.com/docs/messenger-platform/webhook-reference/message-echo
@@ -220,6 +251,14 @@ function handleEcho(messageId, appId, metadata) {
 async function handleDialogFlowAction(sender, action, messages, contexts, parameters) {
   console.log(action)
   switch (action) {
+    case 'unsubscribe_newsletter':
+      try {
+        await userService.setNewsLetterPreference(sender, 0)
+        sendTextMessage(sender,'You have been unsubscribed from the newsletter.')
+      } catch (error) {
+        sendTextMessage(sender,'We were unable to cancel your subscription.  Try again later.')
+      }
+      break;
     case 'buy_iphone':
       let buyIPhoneResponse = 'What color would you like?'
       {
@@ -513,8 +552,11 @@ async function receivedPostback(event) {
     case 'GET_STARTED':
       greetUserText(senderID);
       break;
-    
+    case 'FUN_NEWS':
+      sendFunNewsSubscribe(senderID)
+      break;
     case 'JOB_INQUIRY':
+      console.log('in job inquiry')
       const senderSessionId = sessionIds.get(senderID)
       const dialogflowResponse = await dialogflowService.sendEventToDialogFlow(senderID, senderSessionId,'JOB_OPENINGS')
       await handleDialogFlowResponse(senderID, dialogflowResponse)
@@ -534,6 +576,28 @@ async function receivedPostback(event) {
   console.log('Received postback for user %d and page %d with payload \'%s\' ' +
     'at %d', senderID, recipientID, payload, timeOfPostback);
   
+}
+
+function sendFunNewsSubscribe(userId) {
+  let responseText = `
+  I can send you the latest fun tech news as messages.  You'll be on top of things and get some laughs.
+  How often would you like to receive the them.
+  `
+  
+  const replies = [
+    {
+      content_type: "text",
+      title: "Once per week",
+      payload: "NEWS_PER_WEEK"
+    },
+    {
+      content_type: "text",
+      title: "Once per day",
+      payload: "NEWS_PER_DAY"
+    }
+  ]
+  
+  fbService.sendQuickReply(userId, responseText, replies)
 }
 
 function greetUserText(userId) {
