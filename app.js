@@ -188,6 +188,7 @@ async function receivedMessage(event) {
   if (messageText) {
     //send message to api.ai
     const senderSessionId = sessionIds.get(senderID)
+    fbService.sendTypingOn(senderID)
     const dialogflowResponse = await dialogflowService.sendToDialogFlow(senderID, senderSessionId, messageText);
     await handleDialogFlowResponse(senderID, dialogflowResponse)
   } else if (messageAttachments) {
@@ -205,6 +206,7 @@ async function handleQuickReply(senderID, quickReply, messageId) {
   console.log('Quick reply for message %s with payload %s', messageId, quickReplyPayload);
   //send payload to api.ai
   const senderSessionId = sessionIds.get(senderID)
+  fbService.sendTypingOn(senderID)
   const dialogflowResponse = await dialogflowService.sendToDialogFlow(senderID, senderSessionId, quickReplyPayload);
   await handleDialogFlowResponse(senderID, dialogflowResponse)
 }
@@ -242,13 +244,10 @@ async function handleDialogFlowAction(sender, action, messages, contexts, parame
       fbService.sendTextMessage(sender, colorsResponseText)
       break;
     case 'get_current_weather':
-      console.log('In get_current_weather')
-      console.log(parameters.fields)
       if (parameters.fields.hasOwnProperty('geo-city') && parameters.fields['geo-city'].stringValue !== '') {
         try {
           const city = parameters.fields['geo-city'].stringValue
           const weather = await weatherService.getCurrentWeather(city)
-          console.log(weather)
           if (weather.hasOwnProperty('weather')) {
             const reply = `${messages[0].text.text} ${weather['weather'][0]['description']}`;
             fbService.sendTextMessage(sender, reply)
@@ -258,7 +257,6 @@ async function handleDialogFlowAction(sender, action, messages, contexts, parame
           fbService.sendTextMessage(sender, 'Current weather is unavailable.')
         }
       } else {
-        console.log('No City')
         // No city?  Forward bot question asking for entity
         handleMessages(messages, sender)
       }
@@ -481,9 +479,6 @@ async function handleDialogFlowResponse(sender, response) {
   let parameters = response.parameters;
   
   fbService.sendTypingOff(sender);
-  console.log('**** DIALOGFLOW RESPONSE ****')
-  console.log(response)
-  console.log('******************************')
   
   if (isDefined(action)) {
     await handleDialogFlowAction(sender, action, messages, contexts, parameters);
