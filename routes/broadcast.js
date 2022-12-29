@@ -8,7 +8,7 @@ const router = express.Router();
 
 
 router.get('/', (req, res) => {
-  res.render('/login')
+  res.render('login')
 })
 
 router.get('/no-access', (req, res) => {
