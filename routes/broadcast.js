@@ -16,7 +16,7 @@ router.get('/no-access', (req, res) => {
 })
 
 router.get('/broadcast', ensureAuthenticated, (req, res) => {
-  res.render('broadcast')
+  res.render('broadcast', {user: req.user})
 })
 
 router.post('/broadcast', ensureAuthenticated, (req, res) => {
