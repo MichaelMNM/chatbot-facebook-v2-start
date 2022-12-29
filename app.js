@@ -9,6 +9,10 @@ const {isDefined} = require('./utils')
 const {v4: uuidv4} = require('uuid');
 const sgMail = require('@sendgrid/mail');
 const pg = require('pg')
+const passport = require('passport')
+const FacebookStrategy = require('passport-facebook').Strategy
+const session = require('express-session')
+
 pg.defaults.ssl = true
 
 const fbService = require('./services/fb-service')
@@ -19,6 +23,8 @@ const colorService = require('./services/color-service')
 const jobApplicationService = require('./services/job-application-service')
 const weatherService = require('./services/weather-service')
 const {sendTextMessage} = require('./services/fb-service')
+
+const broadcastRoutes = require('./routes/broadcast')
 
 // Messenger API parameters
 if (!config.FB_PAGE_TOKEN) {
@@ -58,14 +64,26 @@ if (!config.PG_CONFIG) { //used for ink to static files
   throw new Error('missing PG_CONFIG');
 }
 
-
 sgMail.setApiKey(config.SENDGRID_API_KEY);
+
+passport.use(new FacebookStrategy({
+    clientID: config.FB_APP_ID,
+    clientSecret: config.FB_APP_SECRET,
+    callbackURL: config.SERVER_URL + 'auth/facebook/callback'
+  },
+  function(accessToken, refreshToken, profile, cb) {
+    process.nextTick(function () {
+      return cb(null, profile)
+    })
+  }
+))
+
 app.set('port', (process.env.PORT || 5000))
 
+app.set('view engine', 'ejs')
+
 //verify request came from facebook
-app.use(bodyParser.json({
-  verify: verifyRequestSignature
-}));
+app.use(bodyParser.json({verify: verifyRequestSignature}));
 
 //serve static files in the public directory
 app.use(express.static('public'));
@@ -77,6 +95,26 @@ app.use(bodyParser.urlencoded({
 
 // Process application/json
 app.use(bodyParser.json());
+
+// Initialize auth for newsletter application
+app.use(session({
+  secret: config.SESSION_SECRET,
+  resave: true,
+  saveUninitialized: true
+}))
+app.use(passport.initialize())
+app.use(passport.session())
+
+passport.serializeUser(function(profile, cb) {
+  cb(null, profile)
+})
+
+passport.deserializeUser(function(profile, cb) {
+  cb(null, profile)
+})
+
+app.use('/broadcast', broadcastRoutes)
+
 
 const sessionIds = new Map();
 const usersMap = new Map()
@@ -141,6 +179,18 @@ app.post('/webhook/', function (req, res) {
     res.sendStatus(200);
   }
 });
+
+
+app.get('/auth/facebook',
+  passport.authenticate('facebook', {scope: 'public_profile'})
+)
+
+app.get('/auth/facebook/callback',
+  passport.authenticate(
+    'facebook', {successRedirect: '/broadcast/broadcast', failurRedirect: '/broadcast'}
+  )
+)
+
 
 async function setSessionAndUser(senderID) {
   if (!sessionIds.has(senderID)) {
@@ -209,7 +259,7 @@ async function handleQuickReply(senderID, quickReply, messageId) {
   const senderSessionId = sessionIds.get(senderID)
   fbService.sendTypingOn(senderID)
   
-  switch(quickReplyPayload) {
+  switch (quickReplyPayload) {
     case 'NEWS_PER_DAY':
       try {
         const subscribed = await userService.setNewsLetterPreference(senderID, 1)
@@ -254,28 +304,27 @@ async function handleDialogFlowAction(sender, action, messages, contexts, parame
     case 'unsubscribe_newsletter':
       try {
         await userService.setNewsLetterPreference(sender, 0)
-        sendTextMessage(sender,'You have been unsubscribed from the newsletter.')
+        sendTextMessage(sender, 'You have been unsubscribed from the newsletter.')
       } catch (error) {
-        sendTextMessage(sender,'We were unable to cancel your subscription.  Try again later.')
+        sendTextMessage(sender, 'We were unable to cancel your subscription.  Try again later.')
       }
       break;
     case 'buy_iphone':
       let buyIPhoneResponse = 'What color would you like?'
-      {
-        const userFavoriteColor = await colorService.getUserColor(sender)
-        if (userFavoriteColor) {
-          buyIPhoneResponse = `Would you like to order it in your favorite color ${userFavoriteColor}?`
-        }
+    {
+      const userFavoriteColor = await colorService.getUserColor(sender)
+      if (userFavoriteColor) {
+        buyIPhoneResponse = `Would you like to order it in your favorite color ${userFavoriteColor}?`
       }
+    }
       fbService.sendTextMessage(sender, buyIPhoneResponse)
       break;
-    case 'iphone_colors_get_favorite':
-      {
-        const userFavoriteColor = parameters.fields['color'].stringValue
-        await colorService.updateUserColor(userFavoriteColor, sender)
-        const userFavoriteColorReply = `Oh, I like that color too.  I'll remember that.`
-        fbService.sendTextMessage(sender, userFavoriteColorReply)
-      }
+    case 'iphone_colors_get_favorite': {
+      const userFavoriteColor = parameters.fields['color'].stringValue
+      await colorService.updateUserColor(userFavoriteColor, sender)
+      const userFavoriteColorReply = `Oh, I like that color too.  I'll remember that.`
+      fbService.sendTextMessage(sender, userFavoriteColorReply)
+    }
       break;
     case 'get_iphone_colors':
       const colors = await colorService.getAllColors()
@@ -325,8 +374,7 @@ async function handleDialogFlowAction(sender, action, messages, contexts, parame
         fbService.sendButtonMessage(sender, 'What would you like to do next?', buttons)
       }, 3000)
       break;
-    case 'get_position':
-    {
+    case 'get_position': {
       const filteredContexts = contexts.filter(el => {
         return el.name.includes('job_application')
       })
@@ -558,7 +606,7 @@ async function receivedPostback(event) {
     case 'JOB_INQUIRY':
       console.log('in job inquiry')
       const senderSessionId = sessionIds.get(senderID)
-      const dialogflowResponse = await dialogflowService.sendEventToDialogFlow(senderID, senderSessionId,'JOB_OPENINGS')
+      const dialogflowResponse = await dialogflowService.sendEventToDialogFlow(senderID, senderSessionId, 'JOB_OPENINGS')
       await handleDialogFlowResponse(senderID, dialogflowResponse)
       break;
     
@@ -586,14 +634,14 @@ function sendFunNewsSubscribe(userId) {
   
   const replies = [
     {
-      content_type: "text",
-      title: "Once per week",
-      payload: "NEWS_PER_WEEK"
+      content_type: 'text',
+      title: 'Once per week',
+      payload: 'NEWS_PER_WEEK'
     },
     {
-      content_type: "text",
-      title: "Once per day",
-      payload: "NEWS_PER_DAY"
+      content_type: 'text',
+      title: 'Once per day',
+      payload: 'NEWS_PER_DAY'
     }
   ]
   
