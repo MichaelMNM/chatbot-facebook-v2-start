@@ -182,12 +182,12 @@ app.post('/webhook/', function (req, res) {
 
 
 app.get('/auth/facebook',
-  passport.authenticate('facebook', {scope: 'public_profile'})
+  passport.authenticate('facebook', {scope: 'public_profile'}, () => {})
 )
 
 app.get('/auth/facebook/callback',
   passport.authenticate(
-    'facebook', {successRedirect: '/broadcast/broadcast', failurRedirect: '/broadcast'}
+    'facebook', {successRedirect: '/broadcast/broadcast', failureRedirect: '/broadcast'}, () => {}
   )
 )
 

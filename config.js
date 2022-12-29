@@ -13,6 +13,7 @@ const {
   EMAIL_TO,
   EMAIL_FROM,
   OPENWEATHER_API_KEY,
+  ADMIN_ID,
 } = process.env
 
 module.exports = {
@@ -30,6 +31,7 @@ module.exports = {
   EMAIL_TO,
   EMAIL_FROM,
   OPENWEATHER_API_KEY,
+  ADMIN_ID,
   PG_CONFIG: {
     user: process.env.PG_CONFIG_USER,
     database: process.env.PG_CONFIG_DATABASE,
