@@ -39,7 +39,7 @@ const _getUserByFacebookId = async (userId) => {
 const _getUsersByPreference = async (preference, setting) => {
   const client = await db.connect()
   try {
-    const queryUsersByPreference = `SELECT * from users WHERE '${preference}' = '${setting}'`
+    const queryUsersByPreference = `SELECT * from users WHERE '${preference}' = ${parseInt(setting, 10)}`
     const result = await client.query(queryUsersByPreference)
     return result.rows
   } catch (error) {
