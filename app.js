@@ -260,7 +260,7 @@ async function handleQuickReply(senderID, quickReply, messageId) {
   fbService.sendTypingOn(senderID)
   
   switch (quickReplyPayload) {
-    case 'NEWS_PER_DAY':
+    case 'NEWS_PER_WEEK':
       try {
         const subscribed = await userService.setNewsLetterPreference(senderID, 1)
         if (subscribed) {
@@ -272,7 +272,7 @@ async function handleQuickReply(senderID, quickReply, messageId) {
         fbService.sendTextMessage(senderID, errorResponse)
       }
       break;
-    case 'NEWS_PER_WEEK':
+    case 'NEWS_PER_DAY':
       try {
         const subscribed = await userService.setNewsLetterPreference(senderID, 2)
         if (subscribed) {
