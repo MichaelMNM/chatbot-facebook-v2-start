@@ -19,8 +19,22 @@ router.get('/broadcast', ensureAuthenticated, (req, res) => {
   res.render('broadcast', {user: req.user})
 })
 
-router.post('/broadcast', ensureAuthenticated, (req, res) => {
-  res.render('broadcast-confirm')
+router.post('/broadcast', ensureAuthenticated, async (req, res) => {
+  try {
+    const message = req.body.message
+    const newstype = parseInt(req.body.newstype, 10)
+    req.session.newstype = newstype
+    req.session.message = message
+    const usersResult = await userService.findNewsletterUsers(newstype)
+    req.session.users = usersResult
+    res.render(
+      'broadcast-confirm',
+      {user: req.user, users: usersResult, numUsers: usersResult.length, newstype, message}
+    )
+  } catch (error) {
+    console.error(error)
+    res.render('no-access')
+  }
 })
 
 router.get('/broadcast-send', ensureAuthenticated, (req, res) => {
